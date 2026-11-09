@@ -14,9 +14,9 @@ Issues and specs for this repo live as GitHub issues. Use the `gh` CLI for all o
 
 Infer the repo from `git remote -v`; `gh` does this automatically when run inside a clone.
 
-## Repo state
+## Repo
 
-As of setup (2026-11-08) this working copy is **not yet a git repository**. Until it is pushed to GitHub, `gh` commands above will fail with `not a git repository`. Once the remote exists, everything here works as written.
+`origin` is `https://github.com/maxff77/manhwa.git`, default branch `main`.
 
 ## Pull requests as a triage surface
 
