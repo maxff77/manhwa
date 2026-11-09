@@ -1,0 +1,206 @@
+// Modelo de datos del dominio — issue #2.
+// Nombres de modelos/campos en inglés; el lenguaje del dominio (GLOSSARY.md) en español.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum SeriesStatus {
+  ONGOING
+  COMPLETED
+  HIATUS
+  CANCELLED
+}
+
+enum SeriesType {
+  MANHWA
+  MANGA
+  MANHUA
+  OTHER
+}
+
+enum PageStatus {
+  PENDING
+  READY
+  ERROR
+}
+
+/// Fuente externa: manhwaweb (contenido), mangadex (metadata).
+model Source {
+  id       String         @id @default(cuid())
+  slug     String         @unique
+  name     String
+  series   SeriesSource[]
+  chapters Chapter[]
+
+  @@map("sources")
+}
+
+/// Obra interna, independiente de la Fuente de la que se obtiene.
+model Series {
+  id             String       @id @default(cuid())
+  slug           String       @unique
+  title          String
+  originalTitle  String?
+  synopsis       String?
+  coverKey       String?
+  coverSourceUrl String?
+  status         SeriesStatus
+  type           SeriesType
+  demographic    String?
+  erotic         Boolean      @default(false)
+  genres         String[]
+  authors        String[]
+  year           Int?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  sources     SeriesSource[]
+  chapters    Chapter[]
+  follows     Follow[]
+  progress    Progress[]
+  collections CollectionSeries[]
+
+  @@map("series")
+}
+
+/// Vínculo de una Serie con su identidad en una Fuente.
+model SeriesSource {
+  id         String   @id @default(cuid())
+  seriesId   String
+  sourceId   String
+  externalId String
+  url        String?
+  createdAt  DateTime @default(now())
+
+  series Series @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+  source Source @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+
+  @@unique([sourceId, externalId])
+  @@index([seriesId])
+  @@map("series_sources")
+}
+
+/// Capítulo de una Serie tal como lo expone una Fuente de contenido.
+model Chapter {
+  id          String   @id @default(cuid())
+  seriesId    String
+  sourceId    String
+  externalId  String
+  number      Float
+  title       String?
+  publishedAt DateTime?
+  createdAt   DateTime @default(now())
+
+  series   Series     @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+  source   Source     @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+  pages    Page[]
+  progress Progress[]
+
+  @@unique([sourceId, externalId])
+  @@unique([seriesId, sourceId, number])
+  @@index([seriesId, number])
+  @@map("chapters")
+}
+
+/// Imagen de un Capítulo y su estado de caché en R2.
+model Page {
+  id         String     @id @default(cuid())
+  chapterId  String
+  position   Int
+  sourceUrl  String
+  r2Key      String?
+  status     PageStatus @default(PENDING)
+  mimeType   String?
+  bytes      Int?
+  updatedAt  DateTime   @updatedAt
+
+  chapter Chapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+
+  @@unique([chapterId, position])
+  @@map("pages")
+}
+
+/// Cuenta de la plataforma. Credenciales y sesiones viven en el esquema de #7.
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+
+  follows     Follow[]
+  progress    Progress[]
+  collections Collection[]
+
+  @@map("users")
+}
+
+/// Serie que un Usuario sigue explícitamente. Alimenta su Biblioteca y las alertas.
+model Follow {
+  id        String   @id @default(cuid())
+  userId    String
+  seriesId  String
+  alerts    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  series Series @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, seriesId])
+  @@index([seriesId])
+  @@map("follows")
+}
+
+/// Lista con nombre curada por un Usuario. No implica seguir sus Series.
+model Collection {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  series CollectionSeries[]
+
+  @@unique([userId, name])
+  @@map("collections")
+}
+
+model CollectionSeries {
+  collectionId String
+  seriesId     String
+  position     Int
+  addedAt      DateTime @default(now())
+
+  collection Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  series     Series     @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+
+  @@id([collectionId, seriesId])
+  @@unique([collectionId, position])
+  @@index([seriesId])
+  @@map("collection_series")
+}
+
+/// Último punto de lectura de un Usuario en una Serie. Último leído gana.
+model Progress {
+  id        String   @id @default(cuid())
+  userId    String
+  seriesId  String
+  chapterId String
+  page      Int
+  updatedAt DateTime @updatedAt
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  series  Series  @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+  chapter Chapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, seriesId])
+  @@index([seriesId])
+  @@index([chapterId])
+  @@map("progress")
+}
