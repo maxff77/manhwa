@@ -9,11 +9,19 @@ Obra de manhwa, independiente de la Fuente de la que se obtiene.
 _Avoid_: cómic, manga, título
 
 **Fuente**:
-Sitio externo del que se obtiene contenido o metadata (manhwaweb, MangaDex).
+Sitio externo del que se obtiene contenido o metadata (Olympus, MangaDex).
 _Avoid_: scraper, proveedor, backend
 
+**Fuente de contenido**:
+Fuente que expone Series, Capítulos y Páginas (Olympus en v1).
+_Avoid_: origen, scraper
+
+**Fuente de metadata**:
+Fuente que solo aporta metadata de Series, sin Capítulos ni Páginas (MangaDex).
+_Avoid_: proveedor de datos
+
 **Adaptador de fuente**:
-Implementación de la interfaz `SourceAdapter` que traduce una Fuente al modelo del dominio.
+Implementación de la interfaz `SourceAdapter` que traduce una Fuente a los datos que consume la plataforma.
 _Avoid_: plugin, conector
 
 **Capítulo**:

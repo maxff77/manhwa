@@ -30,7 +30,7 @@ enum PageStatus {
   ERROR
 }
 
-/// Fuente externa: manhwaweb (contenido), mangadex (metadata).
+/// Fuente externa: olympus (contenido), mangadex (metadata).
 model Source {
   id       String         @id @default(cuid())
   slug     String         @unique
