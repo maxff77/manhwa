@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Prototipo lector webtoon</title>
+<style>
+  :root { color-scheme: dark }
+  html, body { margin: 0; background: #000; color: #eee; font-family: system-ui, -apple-system, sans-serif }
+  main { margin: 0 }
+  main img { display: block; width: 100%; height: auto; border: 0 }
+  figure { margin: 0 }
+
+  /* B: espacio reservado con la relación de aspecto real */
+  .pgb { position: relative; margin: 0; background: #161616; overflow: hidden }
+  .pgb img { display: block; width: 100%; height: 100%; object-fit: cover }
+  .pgb::after, .pgc::after {
+    content: attr(data-n); position: absolute; right: 8px; bottom: 8px;
+    font-size: 12px; line-height: 1; padding: 3px 6px; border-radius: 4px;
+    background: #000a; color: #fff
+  }
+
+  /* C: el navegador decide qué renderizar; altura estimada */
+  .pgc { position: relative; background: #161616; content-visibility: auto; contain-intrinsic-size: auto 1800px }
+  .pgc img { display: block; width: 100%; height: auto }
+
+  .end { padding: 56px 16px 140px; text-align: center; background: #000 }
+  .end p { margin: 0 0 16px; font-size: 15px; color: #aaa }
+  .end button {
+    display: block; margin: 8px auto; padding: 12px 20px; border-radius: 10px;
+    border: 1px solid #444; background: #1c1c1e; color: #fff; font-size: 16px
+  }
+
+  #progress { position: fixed; inset: 0 0 auto; height: 3px; background: #2a2a2a; z-index: 30 }
+  #bar { height: 100%; width: 0; background: #ff3b30 }
+  #hud {
+    position: fixed; top: 3px; left: 0; right: 0; display: flex; gap: 12px;
+    padding: 6px 10px; font-size: 12px; background: linear-gradient(#000c, #0000);
+    z-index: 20; pointer-events: none
+  }
+  #switch {
+    position: fixed; bottom: calc(12px + env(safe-area-inset-bottom)); left: 50%;
+    transform: translateX(-50%); z-index: 40; display: flex; align-items: center; gap: 4px;
+    background: #fffe; color: #000; border-radius: 999px; padding: 4px;
+    box-shadow: 0 4px 16px #0009; font: 600 13px system-ui
+  }
+  #switch button {
+    border: 0; background: #000; color: #fff; border-radius: 999px;
+    width: 38px; height: 38px; font-size: 17px
+  }
+  #switch .lbl { padding: 0 8px; max-width: 52vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+</style>
+</head>
+<body>
+<div id="progress"><div id="bar"></div></div>
+<div id="hud">
+  <span>Cap. <b id="chapter">1</b></span>
+  <span id="pct">0 %</span>
+  <span id="dbg"></span>
+</div>
+<main id="main"></main>
+<nav id="switch" aria-label="Cambiar variante de prototipo">
+  <button id="prev" aria-label="Variante anterior">←</button>
+  <span class="lbl" id="lbl">A</span>
+  <button id="next" aria-label="Variante siguiente">→</button>
+</nav>
+
+<script>
+/* Prototipo desechable: tres estrategias de render del lector.
+   A = naive (todas las <img> con lazy del navegador, sin dimensiones)
+   B = ventana JS con dimensiones conocidas y precarga de las siguientes N
+   C = content-visibility + contain-intrinsic-size (todo lo hace el navegador) */
+
+const NAMES = { A: 'Naive (lazy del navegador)', B: 'Ventana JS + precarga', C: 'CSS content-visibility' };
+const ORDER = ['A', 'B', 'C'];
+const PRELOAD_AHEAD = 5;
+const CHAPTER_MAX = 2;
+
+const qs = new URLSearchParams(location.search);
+let variant = ORDER.includes((qs.get('variant') || '').toUpperCase()) ? qs.get('variant').toUpperCase() : 'A';
+let chapter = Math.min(CHAPTER_MAX, Math.max(1, Number(qs.get('chapter')) || 1));
+let manifest = { pages: [] };
+let current = null;
+
+const mainEl = document.getElementById('main');
+const barEl = document.getElementById('bar');
+const pctEl = document.getElementById('pct');
+const dbgEl = document.getElementById('dbg');
+const chapterEl = document.getElementById('chapter');
+const lblEl = document.getElementById('lbl');
+
+function save(key, value) { try { localStorage.setItem(key, value); } catch (e) {} }
+function load(key, fallback) { try { const v = localStorage.getItem(key); return v === null ? fallback : v; } catch (e) { return fallback; } }
+
+function setUrl() { history.replaceState(null, '', `?variant=${variant}&chapter=${chapter}`); }
+
+function updateChrome() {
+  chapterEl.textContent = chapter;
+  lblEl.textContent = `${variant} · ${NAMES[variant]}`;
+  const max = Math.max(1, document.documentElement.scrollHeight - innerHeight);
+  const p = Math.min(1, scrollY / max);
+  barEl.style.width = (p * 100).toFixed(2) + '%';
+  pctEl.textContent = Math.round(p * 100) + ' %';
+}
+
+let dbgLast = 0;
+function dbg() {
+  const now = performance.now();
+  if (now - dbgLast < 500) return;
+  dbgLast = now;
+  let n = 0;
+  for (const img of mainEl.querySelectorAll('img')) if (img.currentSrc) n++;
+  dbgEl.textContent = `cargadas ${n}/${manifest.pages.length}`;
+}
+
+let ticking = false;
+function onScroll() {
+  if (ticking) return;
+  ticking = true;
+  requestAnimationFrame(() => {
+    ticking = false;
+    updateChrome();
+    dbg();
+    if (current && current.onScroll) current.onScroll();
+  });
+}
+
+function endPanel() {
+  const d = document.createElement('div');
+  d.className = 'end';
+  const p = document.createElement('p');
+  p.textContent = `Fin del capítulo ${chapter}`;
+  d.append(p);
+  if (chapter < CHAPTER_MAX) {
+    const b = document.createElement('button');
+    b.textContent = 'Siguiente capítulo →';
+    b.onclick = () => goChapter(chapter + 1);
+    d.append(b);
+  }
+  if (chapter > 1) {
+    const b = document.createElement('button');
+    b.textContent = '← Capítulo anterior';
+    b.onclick = () => goChapter(chapter - 1);
+    d.append(b);
+  }
+  return d;
+}
+
+function goChapter(c) {
+  chapter = c;
+  render();
+}
+
+/* ---------- Variante A: naive ---------- */
+function renderA() {
+  mainEl.innerHTML = '';
+  const frag = document.createDocumentFragment();
+  manifest.pages.forEach((p, i) => {
+    const img = new Image();
+    img.src = p.src;
+    img.loading = 'lazy';
+    img.decoding = 'async';
+    img.alt = 'Página ' + (i + 1);
+    frag.append(img);
+  });
+  mainEl.append(frag, endPanel());
+
+  const key = 'wp:A:' + chapter;
+  const saved = Number(load(key, '0'));
+  requestAnimationFrame(() => scrollTo(0, saved));
+
+  let last = 0;
+  return {
+    name: NAMES.A,
+    onScroll() {
+      const now = performance.now();
+      if (now - last > 400) { last = now; save(key, String(scrollY)); }
+    },
+  };
+}
+
+/* ---------- Variante B: ventana JS ---------- */
+let bTops = [];
+let bImgs = [];
+
+function computeBTops() {
+  const width = mainEl.clientWidth;
+  let y = 0;
+  bTops = manifest.pages.map((p) => { const t = y; y += width * p.h / p.w; return t; });
+}
+
+function bIndexAt(scroll) {
+  let lo = 0, hi = bTops.length - 1;
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >> 1;
+    if (bTops[mid] <= scroll) lo = mid; else hi = mid - 1;
+  }
+  return lo;
+}
+
+function renderB() {
+  mainEl.innerHTML = '';
+  bImgs = [];
+  const frag = document.createDocumentFragment();
+  manifest.pages.forEach((p, i) => {
+    const fig = document.createElement('figure');
+    fig.className = 'pgb';
+    fig.dataset.n = i + 1;
+    fig.style.aspectRatio = p.w + ' / ' + p.h;
+    const img = document.createElement('img');
+    img.alt = 'Página ' + (i + 1);
+    img.decoding = 'async';
+    fig.append(img);
+    bImgs.push(img);
+    frag.append(fig);
+  });
+  mainEl.append(frag, endPanel());
+  computeBTops();
+
+  const key = 'wp:B:' + chapter;
+  let saved = null;
+  try { saved = JSON.parse(load(key, 'null')); } catch (e) { saved = null; }
+
+  function bUpdateWindow() {
+    const cur = bIndexAt(scrollY);
+    const lo = Math.max(0, cur - 2);
+    const hi = Math.min(bImgs.length - 1, cur + PRELOAD_AHEAD);
+    for (let i = 0; i < bImgs.length; i++) {
+      const img = bImgs[i];
+      const want = i >= lo && i <= hi;
+      const has = img.hasAttribute('src');
+      if (want && !has) img.setAttribute('src', manifest.pages[i].src);
+      else if (!want && has && (i < cur - 4 || i > cur + PRELOAD_AHEAD + 4)) img.removeAttribute('src');
+    }
+  }
+
+  requestAnimationFrame(() => {
+    if (saved && bTops.length) scrollTo(0, (bTops[saved.page] || 0) + (saved.off || 0));
+    else scrollTo(0, 0);
+    bUpdateWindow();
+  });
+
+  let last = 0;
+  return {
+    name: NAMES.B,
+    onResize() { if (bTops.length) computeBTops(); },
+    onScroll() {
+      bUpdateWindow();
+      const now = performance.now();
+      if (now - last > 300) {
+        last = now;
+        const page = bIndexAt(scrollY);
+        save(key, JSON.stringify({ page, off: Math.max(0, scrollY - bTops[page]) }));
+      }
+    },
+  };
+}
+
+/* ---------- Variante C: content-visibility ---------- */
+function renderC() {
+  mainEl.innerHTML = '';
+  const frag = document.createDocumentFragment();
+  manifest.pages.forEach((p, i) => {
+    const d = document.createElement('div');
+    d.className = 'pgc';
+    d.dataset.n = i + 1;
+    const img = new Image();
+    img.src = p.src;
+    img.loading = 'lazy';
+    img.decoding = 'async';
+    img.alt = 'Página ' + (i + 1);
+    d.append(img);
+    frag.append(d);
+  });
+  mainEl.append(frag, endPanel());
+
+  const key = 'wp:C:' + chapter;
+  const ratio = Number(load(key, '0'));
+  requestAnimationFrame(() => {
+    if (ratio > 0) scrollTo(0, ratio * Math.max(0, document.documentElement.scrollHeight - innerHeight));
+  });
+
+  let last = 0;
+  return {
+    name: NAMES.C,
+    onScroll() {
+      const now = performance.now();
+      if (now - last > 400) {
+        last = now;
+        const max = Math.max(1, document.documentElement.scrollHeight - innerHeight);
+        save(key, String(scrollY / max));
+      }
+    },
+  };
+}
+
+/* ---------- común ---------- */
+function render() {
+  setUrl();
+  current = variant === 'A' ? renderA() : variant === 'B' ? renderB() : renderC();
+  updateChrome();
+  dbgLast = 0;
+  dbg();
+}
+
+function cycle(dir) {
+  const i = ORDER.indexOf(variant);
+  variant = ORDER[(i + dir + ORDER.length) % ORDER.length];
+  render();
+}
+
+document.getElementById('prev').onclick = () => cycle(-1);
+document.getElementById('next').onclick = () => cycle(1);
+
+addEventListener('keydown', (e) => {
+  if (e.target.closest && e.target.closest('input,textarea,[contenteditable]')) return;
+  if (e.key === 'ArrowLeft') cycle(-1);
+  if (e.key === 'ArrowRight') cycle(1);
+});
+
+addEventListener('scroll', onScroll, { passive: true });
+addEventListener('resize', () => {
+  updateChrome();
+  if (current && current.onResize) current.onResize();
+});
+
+fetch('pages/manifest.json')
+  .then((r) => r.json())
+  .then((m) => { manifest = m; render(); })
+  .catch((err) => { mainEl.textContent = 'No se pudo cargar pages/manifest.json: ' + err; });
+</script>
+</body>
+</html>
