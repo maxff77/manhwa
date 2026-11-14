@@ -71,18 +71,22 @@ model Series {
 
 /// Vínculo de una Serie con su identidad en una Fuente.
 model SeriesSource {
-  id         String   @id @default(cuid())
-  seriesId   String
-  sourceId   String
-  externalId String
-  url        String?
-  createdAt  DateTime @default(now())
+  id                  String   @id @default(cuid())
+  seriesId            String
+  sourceId            String
+  externalId          String
+  url                 String?
+  createdAt           DateTime @default(now())
+  lastCheckedAt       DateTime?
+  nextCheckAt         DateTime?
+  consecutiveFailures Int      @default(0)
 
   series Series @relation(fields: [seriesId], references: [id], onDelete: Cascade)
   source Source @relation(fields: [sourceId], references: [id], onDelete: Restrict)
 
   @@unique([sourceId, externalId])
   @@index([seriesId])
+  @@index([nextCheckAt])
   @@map("series_sources")
 }
 
@@ -136,11 +140,12 @@ model User {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  sessions    Session[]
-  accounts    Account[]
-  follows     Follow[]
-  progress    Progress[]
-  collections Collection[]
+  sessions          Session[]
+  accounts          Account[]
+  follows           Follow[]
+  progress          Progress[]
+  collections       Collection[]
+  pushSubscriptions PushSubscription[]
 
   @@map("users")
 }
@@ -224,6 +229,24 @@ model Follow {
   @@unique([userId, seriesId])
   @@index([seriesId])
   @@map("follows")
+}
+
+/// Suscripción Web Push de un dispositivo. El endpoint lo genera el navegador y es único.
+model PushSubscription {
+  id            String    @id @default(cuid())
+  userId        String
+  endpoint      String    @unique
+  p256dh        String
+  auth          String
+  userAgent     String?
+  createdAt     DateTime  @default(now())
+  lastSuccessAt DateTime?
+  failures      Int       @default(0)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("push_subscriptions")
 }
 
 /// Lista con nombre curada por un Usuario. No implica seguir sus Series.

@@ -44,6 +44,10 @@ _Avoid_: playlist, lista de reproducción
 Serie que un Usuario marca explícitamente para seguir; alimenta su Biblioteca y las alertas de Capítulos nuevos. No es una Colección.
 _Avoid_: favorito, suscripción
 
+**Alerta**:
+Aviso que recibe un Usuario cuando una Serie que sigue publica un Capítulo nuevo. Solo cubre Capítulos descubiertos después de ese Seguimiento.
+_Avoid_: notificación, push, aviso
+
 **Usuario**:
 Persona con cuenta en la plataforma, dueña de su Biblioteca y sus Colecciones.
 _Avoid_: cuenta, lector, perfil

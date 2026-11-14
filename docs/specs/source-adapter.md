@@ -70,6 +70,13 @@ export interface SourceChapter {
   url: string;
 }
 
+export interface SourceChapterPage {
+  /** Capítulos de la página, en el orden de la Fuente. */
+  items: SourceChapter[];
+  /** Cursor opaco para el pipeline. `undefined` = no hay más resultados. */
+  nextCursor?: string;
+}
+
 export interface SourcePage {
   /** Índice 0-based en orden de lectura. */
   position: number;
@@ -99,6 +106,12 @@ export interface SourceAdapter {
   /** Lista completa, en el orden de la Fuente. */
   listChapters(seriesExternalId: string): Promise<SourceChapter[]>;
 
+  /** Página de los Capítulos más recientes primero. `cursor` es opaco. */
+  listRecentChapters(
+    seriesExternalId: string,
+    cursor?: string,
+  ): Promise<SourceChapterPage>;
+
   /** Páginas en orden de lectura; `position` es el índice 0-based. */
   getChapterPages(
     seriesExternalId: string,
@@ -107,7 +120,7 @@ export interface SourceAdapter {
 }
 ```
 
-Solo cuatro operaciones. **No hay** operación de novedades: las alertas comparan `listChapters` de las series seguidas contra la DB (ticket #10). `getSeries` no incluye capítulos; en Olympus se cargan aparte.
+Cinco operaciones. `listRecentChapters` es la que usan las alertas: devuelve los Capítulos más recientes primero y el pipeline compara esa página contra la DB (ticket #10), sin pedir la lista completa. No hay operación de novedades por fecha. `getSeries` no incluye capítulos; en Olympus se cargan aparte.
 
 ## Errores y política HTTP
 
@@ -185,6 +198,15 @@ export class FakeSourceAdapter implements SourceAdapter {
   async listChapters(seriesExternalId: string): Promise<SourceChapter[]> {
     return this.fixtures.chapters[seriesExternalId] ?? [];
   }
+  async listRecentChapters(
+    seriesExternalId: string,
+    cursor?: string,
+  ): Promise<SourceChapterPage> {
+    const all = [...(this.fixtures.chapters[seriesExternalId] ?? [])].reverse();
+    const page = Number(cursor ?? "1");
+    const items = all.slice((page - 1) * 40, page * 40);
+    return { items, nextCursor: page * 40 < all.length ? String(page + 1) : undefined };
+  }
   async getChapterPages(
     seriesExternalId: string,
     chapterExternalId: string,
@@ -201,11 +223,12 @@ Tests contra fixtures; sin red y sin DB.
 - [ ] `search`: query con resultados, query vacía (catálogo), cursor con más páginas y cursor final.
 - [ ] `getSeries`: todos los campos, campos opcionales ausentes, `externalId` inexistente → `NOT_FOUND`.
 - [ ] `listChapters`: orden de la Fuente, número duplicado se devuelve tal cual, número no parseable → `null`.
+- [ ] `listRecentChapters`: más recientes primero, cursor con más páginas y cursor final, página vacía.
 - [ ] `getChapterPages`: orden y `position` 0-based, capítulo vacío, listado de imágenes ausente → `PARSE`.
 - [ ] HTTP: 302 al host trampa seguido de 200 → el reintento tiene éxito; 403 persistente → `BLOCKED`; 429 agotado → `RATE_LIMITED`; 5xx agotado → `UPSTREAM`; HTML roto → `PARSE`.
 - [ ] Nunca se devuelve una lista parcial: un error en mitad del parseo lanza.
 - [ ] El `FakeSourceAdapter` pasa la misma suite que cualquier adapter real.
 
-## Riesgo abierto
+## Mecanismo de Olympus
 
-El listado de capítulos de Olympus carga por JS y no se conoce el endpoint que lo alimenta. El contrato no depende del mecanismo, pero el adapter real sí: ver el ticket de research [Mecanismo de listado de capítulos de Olympus](https://github.com/maxff77/manhwa/issues/13).
+El listado de capítulos de Olympus es JSON paginado en `/api/series/<slug>/chapters?page=N&direction=asc|desc&type=comic` (40 por página, `meta.last_page`); el slug de la API no lleva el prefijo `comic-`. La página de un Capítulo sigue siendo HTML para `getChapterPages`. Detalle en la resolución de [Mecanismo de listado de capítulos de Olympus](https://github.com/maxff77/manhwa/issues/13).
