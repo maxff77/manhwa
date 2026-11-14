@@ -126,18 +126,88 @@ model Page {
   @@map("pages")
 }
 
-/// Cuenta de la plataforma. Credenciales y sesiones viven en el esquema de #7.
+/// Usuario de la plataforma. Better Auth es dueño de credenciales y sesiones (#7).
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  createdAt DateTime @default(now())
+  id            String   @id
+  name          String
+  email         String   @unique
+  emailVerified Boolean  @default(false)
+  image         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
+  sessions    Session[]
+  accounts    Account[]
   follows     Follow[]
   progress    Progress[]
   collections Collection[]
 
   @@map("users")
+}
+
+/// Sesión iniciada. Token opaco generado por Better Auth.
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([token])
+  @@index([userId])
+  @@map("sessions")
+}
+
+/// Identidad de un proveedor ligada a un Usuario: credenciales, Google o Discord.
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, accountId])
+  @@index([userId])
+  @@map("accounts")
+}
+
+/// Tokens de un solo uso: reset de contraseña y estado OAuth.
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verifications")
+}
+
+/// Ventana de rate limiting persistida (storage "database" de Better Auth).
+model RateLimit {
+  id          String @id
+  key         String
+  count       Int
+  lastRequest BigInt
+
+  @@unique([key])
+  @@map("rate_limits")
 }
 
 /// Serie que un Usuario sigue explícitamente. Alimenta su Biblioteca y las alertas.
