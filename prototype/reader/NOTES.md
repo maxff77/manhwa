@@ -27,25 +27,32 @@ la primera vez. Dos capítulos reutilizan las mismas 300 imágenes.
 
 ## Resultado de la prueba (2026-11-14)
 
-- El usuario percibió las tres variantes iguales al leer y eligió **C**.
-  Criterio declarado: el contador de imágenes cargadas cambia al avanzar.
-- El contador es un indicador de debug, no una feature. En A y C sube porque
+- El usuario percibió las tres variantes iguales al leer y eligió primero **C**
+  por el contador de imágenes cargadas.
+- Al explicarle que el contador mide memoria retenida (más bajo = menos
+  imágenes vivas), corrigió la elección a **B**.
+- El contador es un indicador de debug, no una feature: en A y C sube porque
   las imágenes se acumulan; en B se mantiene bajo porque la ventana las libera.
 - No se reportaron huecos, tirones, saltos de layout ni recargas de pestaña.
 - Dispositivo y navegador de la prueba: no registrados.
 
 ## Qué se rompe / qué queda sin validar
 
-- **Memoria**: no medida. C no libera imágenes por sí sola; depende de la
-  evicción del navegador. Validar en iOS Safari con un capítulo completo.
-- **Saltos de layout**: `contain-intrinsic-size: auto 1800px` contra alturas
-  reales de 1400–2200 px. Saltos de barra/posición esperables; no reportados.
+- **Memoria**: no medida en dispositivo. B acota el riesgo por diseño
+  (ventana + liberación); C lo dejaba a la evicción del navegador.
+  Validar en iOS Safari con un capítulo completo.
+- **Saltos de layout**: en C, `contain-intrinsic-size: auto 1800px` contra
+  alturas reales de 1400–2200 px; esperables, no reportados. B reserva la
+  altura real y no debería saltar.
 - **Scroll infinito**: el capítulo es finito (300 páginas); no se probó un
   feed infinito.
 - **iOS**: sin validar (no se registró el dispositivo de la prueba).
 
 ## Decisión
 
-C como estrategia de render; B (ventana + precarga) como fallback si iOS
-recarga la pestaña o aparecen saltos. La decisión y su contexto viven en el
-issue #5 y en el mapa #1.
+**B — ventana JS + precarga** como estrategia de render: mantiene una ventana
+`[actual-2, actual+5]` y libera las imágenes lejanas, que es lo único que
+mantiene la memoria acotada con 300 páginas. Trade-off aceptado: con un fling
+muy rápido pueden verse huecos grises hasta que cargan las siguientes.
+C queda descartada como estrategia principal (no libera imágenes por sí sola).
+La decisión y su contexto viven en el issue #5 y en el mapa #1.
