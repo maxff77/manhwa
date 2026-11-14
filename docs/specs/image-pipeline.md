@@ -4,7 +4,7 @@ Spec del ticket [#8](https://github.com/maxff77/manhwa/issues/8). Cómo se sirve
 
 ## Decisión
 
-**v1: hotlink directo.** La API devuelve la URL de origen de cada Página y el navegador descarga de `media.imagesolymp.xyz`. El servidor no proxya, no descarga y no cachea imágenes.
+**v1: hotlink directo.** La API devuelve la URL de origen de cada Página y el navegador descarga de `media.imagesolymp.xyz`. El servidor no proxya la lectura online, no descarga y no cachea imágenes. **Excepción:** las Descargas offline pasan por un proxy de solo streaming (`/api/offline/pages/<pageId>`) para evitar el padding de cuota de las respuestas opacas; ver `docs/specs/offline-pwa.md`.
 
 **Caché en R2: fallback diseñado, no construido.** Se activa si Olympus bloquea el hotlink. El diseño está abajo; el código se escribe cuando ocurra.
 
@@ -70,7 +70,7 @@ Regla de lifecycle de R2: borrar objetos a los 90 días de creados. Cero código
 - Si Olympus bloquea por IP del servidor y no solo el hotlink del navegador, el read-through tampoco funciona. Se detecta con los logs del endpoint; no hay diseño que lo evite.
 - El hotlink expone las URLs del CDN y la IP del lector a Olympus. Aceptado en v1.
 - Si la Fuente agrega URLs firmadas o expirables, el read-through falla igual que el hotlink y hace falta re-sincronizar el capítulo para refrescar `sourceUrl` (y con eso cambia la clave).
-- Coordinación con #9 (offline): el service worker cachea por URL. Las copias offline de v1 (URL de origen) siguen sirviendo bytes ya guardados; las lecturas nuevas en modo caché usan otra URL. No se invalida nada, pero la caché del SW convive con entradas de ambos modos.
+- Coordinación con #9 (offline): las Descargas usan el proxy de streaming `/api/offline/pages/<pageId>` y se cachean por `pageId`, no por URL de origen. Un cambio de `IMAGE_MODE` no invalida lo descargado. Ver `docs/specs/offline-pwa.md`.
 
 ## Checklist al activar
 

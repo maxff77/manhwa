@@ -51,3 +51,11 @@ _Avoid_: cuenta, lector, perfil
 **Progreso**:
 Posición de lectura de un Usuario dentro de una Serie: último Capítulo leído y última página vista.
 _Avoid_: historial, marca
+
+**Descarga**:
+Copia local de las Páginas de un Capítulo en el dispositivo de un Usuario, legible sin conexión. Vive en el dispositivo, no en la cuenta.
+_Avoid_: caché, copia offline
+
+**Precarga automática**:
+Descarga que la aplicación inicia sin una petición explícita del Usuario, bajo su permiso, del próximo Capítulo no leído de una Serie en lectura.
+_Avoid_: autodescarga, descarga automática
