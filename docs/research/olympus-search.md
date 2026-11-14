@@ -2,13 +2,13 @@
 
 **Ticket:** #14 — Mecanismo de búsqueda de Olympus (mapa #1)
 **Fecha del estudio:** 2026-11-14 (snapshot; el sitio no documenta su API y cambia sin aviso)
-**Estado:** investigación completada
+**Estado:** investigación completada; petición del cliente del sitio confirmada (2026-11-14)
 
 ## Resumen ejecutivo
 
 - **Hoy no existe búsqueda textual server-side en `olympusxyz.com`.** `/api/series` solo pagina y filtra por `type`; los parámetros de texto (`search`, `q`, `query`, `name`, `title`, `buscar`, `s`, `nombre`, `filter[name]`) se ignoran: devuelven un payload **byte a byte idéntico** a la página 1 sin filtro. No es un falso negativo: se probó con `academia`, palabra que sí está en el catálogo (primer resultado de la página 1).
 - **`/api/search` ya no existe en el host actual.** Responde 404 de Nuxt tanto con `q` como con `name`. Existió una búsqueda server-side histórica en un subdominio de API (`GET /api/search?name=<q>`, con la extensión imponiendo mínimo 3 caracteres y un máximo de 40 por un límite de la API) que usaban clientes de terceros en 2025; el subdominio de API (`panel.<dominio>`) hoy no resuelve para el dominio actual.
-- **La búsqueda es client-side sobre el catálogo completo.** Los dos clientes mantenidos que se encontraron la implementan así: descargan `GET /api/series/list` (un JSON con todo el catálogo), lo cachean (10 min o 1 h) y filtran por `name` con `contains` case-insensitive. `GET /api/series/list` responde 200 `application/json` en el host actual (verificado con descarga acotada; no se descargó el catálogo).
+- **La búsqueda es client-side sobre el catálogo completo.** Los dos clientes mantenidos que se encontraron la implementan así: descargan `GET /api/series/list` (un JSON con todo el catálogo), lo cachean (10 min o 1 h) y filtran por `name` con `contains` case-insensitive. El propio sitio también lo hace: su cliente web pide `GET /api/series/list` (petición capturada en el navegador del responsable del proyecto, 2026-11-14). `GET /api/series/list` responde 200 `application/json` en el host actual (verificado con descarga acotada; no se descargó el catálogo).
 - **Recomendación para `search(query)`:** query vacía → `GET /api/series?page=N` (15 por página, 60 páginas, 890 cómics) con cursor opaco de página; query no vacía → fetch único de `/api/series/list` cacheado en el adapter, filtro local por nombre normalizado y paginación local con cursor opaco de offset. Fetch + JSON alcanza; no hace falta navegador headless.
 
 ## Respuesta directa
@@ -29,6 +29,7 @@
 - Sin 403, 429 ni redirección al host trampa en ninguna petición. No hubo bloqueo.
 - Se respetó `robots.txt`: Cloudflare Managed Content Signals, `User-agent: * / Allow: /`, con bloqueo explícito de ClaudeBot, Claude-Web, anthropic-ai, GPTBot, CCBot y otros. No se usó WebFetch ni navegador.
 - La UI del buscador es un modal tipo command palette: el HTML server-rendered trae `<button class="searchbtn" aria-label="Buscar series">` con atajo `⌘K`; no hay ruta `/buscar` ni `/search` en el payload.
+- La petición del cliente del sitio citada como [OL-CLIENT] fue capturada por el responsable del proyecto en su navegador, fuera de esta investigación; se documenta sin cookies ni cuerpo.
 
 ## Evidencia: `/api/series` no tiene búsqueda textual
 
@@ -134,7 +135,7 @@ static MangasPage search(List<JsonObject> catalog, int page, String query) {
 
 Dos clientes independientes convergen en el mismo patrón: no hay endpoint de búsqueda y el catálogo completo se obtiene con `/api/series/list`.
 
-**Inferencia (no verificada directamente):** el modal `⌘K` del propio sitio hace lo mismo. No se localizó el chunk JS que contiene el llamador del buscador: se inspeccionaron el chunk de entrada y 7 chunks precargados, más los manifiestos de build de Nuxt, y ninguno contenía `Buscar series` ni rutas `/api/`. La conclusión se apoya en el comportamiento del backend (sin parámetro de texto) y en los dos clientes.
+**Verificado:** el modal `⌘K` del propio sitio pide `GET https://olympusxyz.com/api/series/list` (petición capturada en el navegador del responsable del proyecto, 2026-11-14; `Referer: https://olympusxyz.com/`, sin parámetros de búsqueda). No se capturó la respuesta ni el código que filtra; que el filtrado sea en cliente se sigue del backend (sin parámetro de texto) y de los dos clientes. El chunk JS del buscador no se localizó: se inspeccionaron el chunk de entrada y 7 chunks precargados, más los manifiestos de build de Nuxt, y ninguno contenía `Buscar series` ni rutas `/api/`.
 
 ### Payload de `/api/series/list` (forma según los clientes, no descargado)
 
@@ -206,7 +207,7 @@ Contrato de referencia: `docs/specs/source-adapter.md` (ticket #6). Firma: `sear
 ## Riesgos y preguntas abiertas
 
 - **`/api/series/list` no está documentado y su tamaño no se midió.** Es el catálogo completo (los clientes lo cachean), probablemente cientos de KB. Si el endpoint cambia o desaparece, la búsqueda no vacía falla; el precedente de `/api/search` demuestra que la superficie de la API es volátil.
-- **No se capturó la petición real del modal del sitio.** La conclusión client-side es inferencia respaldada por el backend (sin parámetro de texto) y por dos clientes independientes, no por el bundle del sitio. El chunk del buscador no se localizó dentro del presupuesto de peticiones.
+- **La petición del modal del sitio está confirmada, pero no su respuesta ni su código de filtrado.** Se capturó `GET /api/series/list` sin parámetros (navegador del responsable del proyecto, 2026-11-14). El chunk del buscador no se localizó dentro del presupuesto de peticiones, así que la semántica exacta del filtro del sitio sigue sin verificarse.
 - **Semántica de matching del sitio desconocida.** No se sabe si su UI pliega tildes, si busca en `summary`/autores o solo en `name`. Los clientes de terceros usan solo `name` (Mihon case-insensitive; Msopla además sin tildes).
 - **Deriva del catálogo:** `total` pasó de 889 (#13, 2026-11-12) a 890 (2026-11-14). Cualquier snapshot envejece.
 - **Prefijo `novela-` asumido** para URLs de novelas; no verificado. #13 solo verificó `comic-`.
@@ -221,6 +222,7 @@ Contrato de referencia: `docs/specs/source-adapter.md` (ticket #6). Firma: `sear
 - **[OL-API]** `GET https://olympusxyz.com/api/series?page=1`, `?page=2`, `?type=novela&page=1` y las 9 variantes de parámetros de texto listadas arriba — 2026-11-14. Respuestas 200 JSON; comparadas con `cmp`.
 - **[OL-404]** `GET https://olympusxyz.com/api/search?q=academia`, `GET https://olympusxyz.com/api/search?name=academia`, `GET https://olympusxyz.com/api/series/search?q=academia` — 2026-11-14, todas 404.
 - **[OL-LIST]** `GET https://olympusxyz.com/api/series/list` — 2026-11-14, 200 `application/json`; descarga acotada a 4 KiB con `curl --max-filesize`, sin conservar el cuerpo.
+- **[OL-CLIENT]** Captura del cliente web del sitio en el navegador del responsable del proyecto — 2026-11-14: `GET https://olympusxyz.com/api/series/list`, `Referer: https://olympusxyz.com/`, sin parámetros. No se conservaron cookies, cuerpo ni otros headers.
 - **[KEI-EXT]** Extensión Mihon/Keiyoushi `OlympusScanlation.kt`, commit `3aeaa88e267d59755003c23a6db6c7d33ce201a2` (2026-11-03): <https://github.com/keiyoushi/extensions-source/blob/3aeaa88e267d59755003c23a6db6c7d33ce201a2/src/es/olympusscanlation/src/eu/kanade/tachiyomi/extension/es/olympusscanlation/OlympusScanlation.kt>. Búsqueda local sobre `/api/series/list`, caché 1 h, 20 por página.
 - **[KEI-DTO]** `Dto.kt` de la misma extensión: `PayloadMangaDto(val data: List<MangaDto>)`, `MangaDto`. <https://github.com/keiyoushi/extensions-source/blob/3aeaa88e267d59755003c23a6db6c7d33ce201a2/src/es/olympusscanlation/src/eu/kanade/tachiyomi/extension/es/olympusscanlation/Dto.kt>.
 - **[KEI-HIST]** Commit `d1c8f4512c873429333eaaf399ce057e4fcb0351` (2025-03-13), "Olympus Scanlation: Update domain and reduce search query length to api limit": uso histórico de `GET /api/search?name=<q>`; la extensión imponía mínimo 3 caracteres y el commit limita el máximo a 40 por un límite de la API. <https://github.com/keiyoushi/extensions-source/commit/d1c8f4512c873429333eaaf399ce057e4fcb0351>.
