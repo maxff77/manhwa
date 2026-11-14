@@ -8,6 +8,14 @@ Plataforma de lectura de manhwa en español: catálogo, lector webtoon, bibliote
 Obra de manhwa, independiente de la Fuente de la que se obtiene.
 _Avoid_: cómic, manga, título
 
+**Catálogo**:
+Conjunto de Series ingestadas desde las Fuentes de contenido, visible para cualquier visitante.
+_Avoid_: inventario, listado, librería
+
+**Búsqueda**:
+Consulta textual de un visitante o Usuario sobre los títulos del Catálogo.
+_Avoid_: filtro, búsqueda avanzada
+
 **Fuente**:
 Sitio externo del que se obtiene contenido o metadata (Olympus, MangaDex).
 _Avoid_: scraper, proveedor, backend
