@@ -30,6 +30,34 @@ enum PageStatus {
   ERROR
 }
 
+enum UserRole {
+  USER
+  MODERATOR
+}
+
+enum CommentStatus {
+  VISIBLE
+  HIDDEN
+  DELETED
+}
+
+enum CommentReportReason {
+  SPAM
+  ABUSE
+  OTHER
+}
+
+enum CommentReportStatus {
+  OPEN
+  RESOLVED
+  DISMISSED
+}
+
+enum NotificationType {
+  REPLY
+  MENTION
+}
+
 /// Fuente externa: olympus (contenido), mangadex (metadata).
 model Source {
   id       String         @id @default(cuid())
@@ -65,6 +93,7 @@ model Series {
   follows     Follow[]
   progress    Progress[]
   collections CollectionSeries[]
+  comments    Comment[]
 
   @@map("series")
 }
@@ -105,6 +134,7 @@ model Chapter {
   source   Source     @relation(fields: [sourceId], references: [id], onDelete: Restrict)
   pages    Page[]
   progress Progress[]
+  comments Comment[]
 
   @@unique([sourceId, externalId])
   @@unique([seriesId, sourceId, number])
@@ -132,20 +162,32 @@ model Page {
 
 /// Usuario de la plataforma. Better Auth es dueño de credenciales y sesiones (#7).
 model User {
-  id            String   @id
-  name          String
-  email         String   @unique
-  emailVerified Boolean  @default(false)
-  image         String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id                    String   @id
+  name                  String
+  email                 String   @unique
+  emailVerified         Boolean  @default(false)
+  image                 String?
+  username              String?  @unique
+  role                  UserRole @default(USER)
+  commentsBlockedAt     DateTime?
+  commentsBlockedReason String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 
-  sessions          Session[]
-  accounts          Account[]
-  follows           Follow[]
-  progress          Progress[]
-  collections       Collection[]
-  pushSubscriptions PushSubscription[]
+  sessions           Session[]
+  accounts           Account[]
+  follows            Follow[]
+  progress           Progress[]
+  collections        Collection[]
+  pushSubscriptions  PushSubscription[]
+  comments           Comment[]          @relation("CommentAuthor")
+  moderatedComments  Comment[]          @relation("CommentModerator")
+  deletedComments    Comment[]          @relation("CommentDeleter")
+  commentReactions   CommentReaction[]
+  commentReports     CommentReport[]    @relation("ReportReporter")
+  resolvedReports    CommentReport[]    @relation("ReportResolver")
+  notifications      Notification[]     @relation("NotificationRecipient")
+  actedNotifications Notification[]     @relation("NotificationActor")
 
   @@map("users")
 }
@@ -296,4 +338,97 @@ model Progress {
   @@index([seriesId])
   @@index([chapterId])
   @@map("progress")
+}
+
+/// Comentario en el hilo de una Serie (chapterId null) o de un Capítulo.
+/// Las Respuestas cuelgan de parentId sin límite de profundidad.
+model Comment {
+  id        String        @id @default(cuid())
+  authorId  String?
+  seriesId  String
+  chapterId String?
+  parentId  String?
+  body      String
+  status    CommentStatus @default(VISIBLE)
+  likeCount Int           @default(0)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  moderatedById String?
+  moderatedAt   DateTime?
+  deletedById   String?
+  deletedAt     DateTime?
+
+  author    User?    @relation("CommentAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  moderator User?    @relation("CommentModerator", fields: [moderatedById], references: [id], onDelete: SetNull)
+  deleter   User?    @relation("CommentDeleter", fields: [deletedById], references: [id], onDelete: SetNull)
+  series    Series   @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+  chapter   Chapter? @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  parent    Comment? @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   Comment[] @relation("CommentReplies")
+
+  reactions     CommentReaction[]
+  reports       CommentReport[]
+  notifications Notification[]
+
+  @@index([chapterId, parentId, status, createdAt, id])
+  @@index([seriesId, parentId, status, createdAt, id])
+  @@index([parentId, createdAt, id])
+  @@index([authorId, createdAt])
+  @@map("comments")
+}
+
+/// «Me gusta» de un Usuario a un Comentario. Uno por Usuario y Comentario.
+model CommentReaction {
+  commentId String
+  userId    String
+  createdAt DateTime @default(now())
+
+  comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([commentId, userId])
+  @@index([userId])
+  @@map("comment_reactions")
+}
+
+/// Reporte de un Usuario sobre un Comentario.
+model CommentReport {
+  id           String              @id @default(cuid())
+  commentId    String
+  reporterId   String?
+  reason       CommentReportReason
+  note         String?
+  status       CommentReportStatus @default(OPEN)
+  createdAt    DateTime            @default(now())
+  resolvedAt   DateTime?
+  resolvedById String?
+
+  comment    Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  reporter   User?   @relation("ReportReporter", fields: [reporterId], references: [id], onDelete: SetNull)
+  resolvedBy User?   @relation("ReportResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
+
+  @@unique([commentId, reporterId])
+  @@index([status, createdAt])
+  @@index([commentId])
+  @@map("comment_reports")
+}
+
+/// Aviso in-app de una Respuesta o Mención.
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  actorId   String?
+  commentId String
+  type      NotificationType
+  createdAt DateTime         @default(now())
+  readAt    DateTime?
+
+  user    User    @relation("NotificationRecipient", fields: [userId], references: [id], onDelete: Cascade)
+  actor   User?   @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
+  comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, commentId, type])
+  @@index([userId, readAt, createdAt])
+  @@map("notifications")
 }

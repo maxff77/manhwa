@@ -64,6 +64,46 @@ _Avoid_: notificación, push, aviso
 Persona con cuenta en la plataforma, dueña de su Biblioteca y sus Colecciones.
 _Avoid_: cuenta, lector, perfil
 
+**Hilo**:
+Conjunto de Comentarios de una Serie o de un Capítulo, con sus Respuestas anidadas.
+_Avoid_: discusión, foro
+
+**Comentario**:
+Aporte público de un Usuario en el Hilo de una Serie o de un Capítulo.
+_Avoid_: mensaje, post, opinión
+
+**Respuesta**:
+Comentario que cuelga de otro Comentario, a cualquier profundidad.
+_Avoid_: réplica
+
+**Reacción**:
+«Me gusta» que un Usuario deja en un Comentario; una por Usuario y Comentario.
+_Avoid_: voto, like, emoji
+
+**Mención**:
+Referencia a otro Usuario por su `@username` dentro de un Comentario.
+_Avoid_: etiqueta, tag
+
+**Reporte**:
+Aviso de un Usuario a los Moderadores sobre un Comentario.
+_Avoid_: denuncia, flag
+
+**Moderador**:
+Usuario con permiso para revisar Reportes y ocultar, restaurar o eliminar Comentarios.
+_Avoid_: admin, staff
+
+**Comentario oculto**:
+Comentario retirado de la vista pública de forma reversible por un Moderador.
+_Avoid_: borrado, eliminado
+
+**Comentario eliminado**:
+Comentario retirado de forma permanente; si tiene Respuestas, deja una lápida en su lugar.
+_Avoid_: oculto, borrado
+
+**Notificación**:
+Aviso dentro de la app de una Respuesta o Mención recibida.
+_Avoid_: alerta, push
+
 **Progreso**:
 Posición de lectura de un Usuario dentro de una Serie: último Capítulo leído y última página vista.
 _Avoid_: historial, marca

@@ -2,6 +2,8 @@
 
 Spec del ticket [#7](https://github.com/maxff77/manhwa/issues/7). Cómo se identifica un Usuario, cómo se guardan sus credenciales y sesiones, y qué tablas añade al esquema.
 
+> Actualizado por [#11](https://github.com/maxff77/manhwa/issues/11): se añaden el username público (`@username`) y el rol `MODERATOR`. El detalle de comentarios y moderación vive en `docs/specs/comments.md`.
+
 ## Decisión
 
 **Better Auth 1.7.23**, versión fijada. El Usuario vive en Postgres propio; ningún proveedor externo guarda la identidad. Métodos: email+contraseña, Google y Discord.
@@ -24,6 +26,8 @@ La decisión acepta los defaults de Better Auth salvo lo marcado como **override
 | Cambio de contraseña | Sí, con reautenticación |
 | Cerrar todas las sesiones | Sí |
 | Nombre visible | Opcional en el formulario; `User.name` es NOT NULL |
+| Username público | Sí: único, 3–20 caracteres, minúsculas, inmutable en v1; obligatorio para comentar |
+| Rol | `USER` o `MODERATOR`; se asigna por SQL, sin UI de administración |
 | Cambio de email | No |
 | 2FA | No |
 | Exportación de datos | No |
@@ -32,8 +36,9 @@ La decisión acepta los defaults de Better Auth salvo lo marcado como **override
 
 ### Registro y verificación
 
-- Formulario: email, contraseña y nombre opcional. Si el nombre queda vacío se guarda la parte local del email (Better Auth exige `name` NOT NULL).
+- Formulario: email, contraseña, username y nombre opcional. Si el nombre queda vacío se guarda la parte local del email (Better Auth exige `name` NOT NULL).
 - Contraseña: 8–128 caracteres (default de Better Auth), sin reglas de composición.
+- **Username**: campo obligatorio del formulario de registro email+contraseña. Reglas: 3–20 caracteres, `^[a-z][a-z0-9_]{2,19}$` (se acepta mayúscula al escribir y se normaliza a minúsculas), sin palabras reservadas (`admin`, `administrador`, `moderador`, `mod`, `soporte`, `staff`, `sistema`, `manhwa`, `usuario`, `eliminado`). Único; el cliente consulta `POST /api/auth/is-username-available`. Inmutable una vez elegido.
 - Hash: **override** con Argon2id de `@node-rs/argon2` (defaults `m=19456 KiB`, `t=2`, `p=1`, alineados con el baseline de OWASP). El scrypt de serie de Better Auth queda ~4× por debajo de ese baseline.
 - Al registrarse se envía un enlace de verificación (JWT firmado, `expiresIn` 1 hora) por Resend.
 - `requireEmailVerification: true`: sin verificar, el login email+contraseña responde `403 EMAIL_NOT_VERIFIED`. `sendOnSignIn: true` reenvía el enlace en cada intento, acotado por el rate limit de `/send-verification-email`.
@@ -50,6 +55,7 @@ La decisión acepta los defaults de Better Auth salvo lo marcado como **override
 - **Google**: scopes `openid`, `email`, `profile` (no sensibles, no requieren verificación de app). Consent screen publicado. Redirect URI `https://<dominio>/api/auth/callback/google`.
 - **Discord**: scopes `identify`, `email`. Redirect URI `https://<dominio>/api/auth/callback/discord`.
 - Discord puede devolver `email: null` en cuentas creadas solo con teléfono. Sin email no se puede crear el Usuario (`email` NOT NULL): la UI muestra un error y sugiere otro método.
+- **Username en OAuth**: el plugin de username es opcional en el alta. El Usuario de Google o Discord entra sin username y lo elige una vez antes de su primer comentario; sin username no puede comentar. `POST /api/auth/update-user` solo lo acepta si aún no tiene (`immutableUsername: true`).
 - Vinculación: defaults de Better Auth (`enabled: true`, `trustedProviders: []`, `disableImplicitLinking: false`). La vinculación implícita exige que el proveedor reporte el email como verificado **y** que el Usuario local tenga `emailVerified` (`requireLocalEmailVerified` default `true`). No se marcan proveedores como confiables.
 
 ### Recuperación de contraseña
@@ -94,7 +100,7 @@ Las tablas de auth siguen la convención del repo: modelos Prisma en inglés, ta
 
 | Modelo | Tabla | Notas |
 |---|---|---|
-| `User` | `users` | `name` NOT NULL; `emailVerified`; `image`; `updatedAt`. `id` sin default |
+| `User` | `users` | `name` NOT NULL; `emailVerified`; `image`; `username` único y nullable; `role`; `updatedAt`. `id` sin default |
 | `Session` | `sessions` | `token` único; `expiresAt`, `ipAddress`, `userAgent`; FK a `User` con `onDelete: Cascade` |
 | `Account` | `accounts` | Identidad por proveedor (`providerId`, `accountId`); `password` guarda el hash Argon2id con `providerId: "credential"`. Unique `(providerId, accountId)` añadido por nosotros (Better Auth no lo exige) |
 | `Verification` | `verifications` | Tokens de un solo uso: reset (`reset-password:<token>`) y estado OAuth. Índice por `identifier` |
@@ -103,17 +109,23 @@ Las tablas de auth siguen la convención del repo: modelos Prisma en inglés, ta
 Detalles del esquema:
 
 - Los ids de las cinco tablas de auth los genera Better Auth en JS (string de 32 caracteres), sin default en la base. El resto de modelos del dominio conservan `cuid()`.
+- `username` lo añade el plugin `username` de Better Auth: `String? @unique`, normalizado a minúsculas. Es nullable para permitir el alta por OAuth; la API de comentarios exige que esté definido. `displayUsername` se desactiva.
+- `role` (`UserRole.USER` / `UserRole.MODERATOR`) se declara como campo adicional con `input: false`: el Usuario no puede asignárselo. Las rutas de moderación comprueban el rol en la base, no en la sesión.
+- `commentsBlockedAt` y `commentsBlockedReason` son de la spec de comentarios (#11).
 - `Follow`, `Progress` y `Collection` no cambian: sus FK a `User` ya tienen `onDelete: Cascade`.
 - La verificación de email no usa filas de `verification`: es un JWT firmado. `verification` guarda reset y estado OAuth.
 - Better Auth no emite unique en `Account(providerId, accountId)`; el nuestro evita identidades duplicadas y no lo rechaza la validación de esquema.
 
 ## Configuración
 
+`RESERVED_USERNAMES` es un `Set` con las palabras reservadas del registro (`admin`, `administrador`, `moderador`, `mod`, `soporte`, `staff`, `sistema`, `manhwa`, `usuario`, `eliminado`). El plugin `username` exige email+contraseña habilitado, que ya lo está.
+
 ```ts
 // lib/auth.ts
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { nextCookies } from "better-auth/next-js";
+import { username } from "better-auth/plugins";
 import { hash, verify } from "@node-rs/argon2";
 import { prisma } from "@/lib/prisma";
 
@@ -156,9 +168,24 @@ export const auth = betterAuth({
       "/send-verification-email": { window: 60, max: 3 },
     },
   },
-  user: { deleteUser: { enabled: true } },
+  user: {
+    additionalFields: {
+      role: { type: "string", input: false },
+    },
+    deleteUser: { enabled: true },
+  },
   advanced: { ipAddress: { ipAddressHeaders: ["x-forwarded-for"] } },
-  plugins: [nextCookies()],
+  plugins: [
+    username({
+      minUsernameLength: 3,
+      maxUsernameLength: 20,
+      displayUsername: false,
+      immutableUsername: true,
+      usernameValidator: (value) =>
+        /^[a-z][a-z0-9_]{2,19}$/i.test(value) && !RESERVED_USERNAMES.has(value.toLowerCase()),
+    }),
+    nextCookies(), // debe ser el último plugin del array
+  ],
 });
 ```
 
@@ -195,6 +222,7 @@ No bloquean la decisión; sí bloquean abrir registro al público.
 ## Riesgos y límites conocidos
 
 - **Breaking changes de Better Auth**: 1.5, 1.6 y 1.7 trajeron cambios incompatibles en doce meses. Fijar `1.7.23` exacta y leer release notes antes de subir.
+- **Plugin de username**: las opciones `immutableUsername` y `displayUsername` se verifican contra 1.7.23; si no existen en esa versión, la inmutabilidad y la lista reservada se aplican en el servidor antes de `updateUser`.
 - **Prisma 8**: el adaptador solo soporta Prisma 5–7. Fijar `prisma@7.10.x`; `npm latest` ya resuelve un RC de 8.
 - **Rate limit solo por IP**: no hay contador por cuenta.
 - **Sin cambio de email, 2FA ni exportación** en v1.
@@ -216,10 +244,12 @@ No bloquean la decisión; sí bloquean abrir registro al público.
 - [ ] Borrado con contraseña elimina `user`, `session` y `account`, y cae `Follow`/`Progress`/`Collection`; sesión OAuth vieja → `SESSION_EXPIRED`.
 - [ ] Cookies con `HttpOnly`, `Secure` y `SameSite=Lax` en producción.
 - [ ] Leer funciona sin sesión; seguir o guardar progreso redirige a login.
+- [ ] El formulario de registro email+contraseña exige username; username duplicado → 409; username reservado → 400.
+- [ ] Un Usuario de OAuth sin username no puede comentar hasta elegirlo; una vez elegido no se cambia.
 
 ## Fuera de alcance v1
 
 - 2FA/TOTP, passkeys, magic links, SMS.
 - Cambio de email y exportación de datos.
 - Contador de intentos por email.
-- Roles y administración.
+- UI de administración y edición de roles: el campo `role` existe y se asigna por SQL.
