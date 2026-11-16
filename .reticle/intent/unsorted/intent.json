@@ -1,0 +1,46 @@
+{
+  "intents": {
+    "inline:la-home-carga-sin-errores-y-muestra-el-cat-logo-0be5ce5f": {
+      "binding": {
+        "kind": "allOf",
+        "predicates": [
+          {
+            "kind": "route",
+            "pathname": "/"
+          },
+          {
+            "kind": "element",
+            "query": {
+              "name": "Catálogo",
+              "role": "heading"
+            }
+          },
+          {
+            "contains": "El Catálogo está vacío",
+            "kind": "text"
+          },
+          {
+            "absent": true,
+            "kind": "console",
+            "level": "error"
+          }
+        ]
+      },
+      "declaredAt": 1794851090407,
+      "id": "inline:la-home-carga-sin-errores-y-muestra-el-cat-logo-0be5ce5f",
+      "provenBy": {
+        "at": 1794851090587,
+        "grade": "presence",
+        "runId": "drive-70172c7307c2136b",
+        "verdictId": "reticle_assert:1794851090587"
+      },
+      "state": "proved",
+      "statement": "la home carga sin errores y muestra el Catálogo vacío",
+      "status": "proved",
+      "subject": "unsorted",
+      "updatedAt": 1794851090594
+    }
+  },
+  "subject": "unsorted",
+  "version": 1
+}

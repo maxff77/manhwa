@@ -1,0 +1,17 @@
+{
+  "entries": [
+    {
+      "id": "flow:la-home-carga-sin-errores",
+      "statement": "Un visitante abre la home: carga sin errores de consola, muestra el Cat…",
+      "status": "proposed",
+      "subject": "la-home-carga-sin-errores"
+    },
+    {
+      "id": "inline:la-home-carga-sin-errores-y-muestra-el-cat-logo-0be5ce5f",
+      "statement": "la home carga sin errores y muestra el Catálogo vacío",
+      "status": "proved",
+      "subject": "unsorted"
+    }
+  ],
+  "version": 1
+}

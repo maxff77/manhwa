@@ -3,3 +3,26 @@
 
 # machine-local tool consent/state
 /.impeccable/config.local.json
+# heroui-agents-md
+.heroui-docs/
+
+# Next.js
+/node_modules/
+/.next/
+/next-env.d.ts
+*.tsbuildinfo
+
+# Prisma client generated into src/ (regenerable con `prisma generate`)
+/src/generated/
+
+# entorno local
+/.env
+
+# impeccable: estado de ejecución local
+/.impeccable/hook.cache.json
+/.impeccable/live/server.json
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/

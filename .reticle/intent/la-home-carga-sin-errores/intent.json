@@ -1,0 +1,18 @@
+{
+  "intents": {
+    "flow:la-home-carga-sin-errores": {
+      "declaredAt": 1794851117927,
+      "id": "flow:la-home-carga-sin-errores",
+      "state": "declared",
+      "statement": "Un visitante abre la home: carga sin errores de consola, muestra el Catálogo vacío y el conmutador de tema claro/oscuro cambia el tema y vuelve.",
+      "status": "proposed",
+      "subject": "la-home-carga-sin-errores",
+      "surface": {
+        "flow": "la-home-carga-sin-errores"
+      },
+      "updatedAt": 1794851117928
+    }
+  },
+  "subject": "la-home-carga-sin-errores",
+  "version": 1
+}

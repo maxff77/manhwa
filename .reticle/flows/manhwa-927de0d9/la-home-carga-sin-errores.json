@@ -1,0 +1,80 @@
+{
+  "version": 2,
+  "name": "la-home-carga-sin-errores",
+  "projectId": "manhwa-927de0d9",
+  "createdAt": 1794851117926,
+  "steps": [
+    {
+      "tool": "reticle_act",
+      "anchor": {
+        "kind": "role",
+        "role": "button",
+        "name": "Usar tema oscuro"
+      },
+      "args": {},
+      "action": "click",
+      "source": {
+        "file": "src/app/page.tsx",
+        "line": 9
+      },
+      "expect": {
+        "kind": "allOf",
+        "predicates": [
+          {
+            "kind": "element",
+            "query": {
+              "role": "button",
+              "name": "Usar tema claro"
+            }
+          },
+          {
+            "kind": "console",
+            "level": "error",
+            "absent": true
+          }
+        ]
+      },
+      "page": "/"
+    },
+    {
+      "tool": "reticle_act",
+      "anchor": {
+        "kind": "role",
+        "role": "button",
+        "name": "Usar tema claro"
+      },
+      "args": {},
+      "action": "click",
+      "source": {
+        "file": "src/app/page.tsx",
+        "line": 9
+      },
+      "expect": {
+        "kind": "element",
+        "query": {
+          "role": "button",
+          "name": "Usar tema oscuro"
+        }
+      },
+      "page": "/"
+    }
+  ],
+  "startPath": "/",
+  "intent": "Un visitante abre la home: carga sin errores de consola, muestra el Catálogo vacío y el conmutador de tema claro/oscuro cambia el tema y vuelve.",
+  "requires": [
+    {
+      "kind": "route",
+      "pathname": "/"
+    }
+  ],
+  "ensures": [
+    {
+      "kind": "route",
+      "pathname": "/"
+    }
+  ],
+  "author": {
+    "agent": "claude-code"
+  },
+  "intentId": "flow:la-home-carga-sin-errores"
+}

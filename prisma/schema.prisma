@@ -2,12 +2,12 @@
 // Nombres de modelos/campos en inglés; el lenguaje del dominio (GLOSSARY.md) en español.
 
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 enum SeriesStatus {
@@ -71,22 +71,24 @@ model Source {
 
 /// Obra interna, independiente de la Fuente de la que se obtiene.
 model Series {
-  id             String       @id @default(cuid())
-  slug           String       @unique
-  title          String
-  originalTitle  String?
-  synopsis       String?
-  coverKey       String?
-  coverSourceUrl String?
-  status         SeriesStatus
-  type           SeriesType
-  demographic    String?
-  erotic         Boolean      @default(false)
-  genres         String[]
-  authors        String[]
-  year           Int?
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  id                      String       @id @default(cuid())
+  slug                    String       @unique
+  title                   String
+  titleNormalized         String
+  originalTitle           String?
+  originalTitleNormalized String?
+  synopsis                String?
+  coverKey                String?
+  coverSourceUrl          String?
+  status                  SeriesStatus
+  type                    SeriesType   @default(MANHWA)
+  demographic             String?
+  erotic                  Boolean      @default(false)
+  genres                  String[]
+  authors                 String[]
+  year                    Int?
+  createdAt               DateTime     @default(now())
+  updatedAt               DateTime     @updatedAt
 
   sources     SeriesSource[]
   chapters    Chapter[]
@@ -100,15 +102,16 @@ model Series {
 
 /// Vínculo de una Serie con su identidad en una Fuente.
 model SeriesSource {
-  id                  String   @id @default(cuid())
+  id                  String    @id @default(cuid())
   seriesId            String
   sourceId            String
   externalId          String
   url                 String?
-  createdAt           DateTime @default(now())
+  createdAt           DateTime  @default(now())
   lastCheckedAt       DateTime?
   nextCheckAt         DateTime?
-  consecutiveFailures Int      @default(0)
+  chaptersSyncedAt    DateTime?
+  consecutiveFailures Int       @default(0)
 
   series Series @relation(fields: [seriesId], references: [id], onDelete: Cascade)
   source Source @relation(fields: [sourceId], references: [id], onDelete: Restrict)
@@ -121,14 +124,14 @@ model SeriesSource {
 
 /// Capítulo de una Serie tal como lo expone una Fuente de contenido.
 model Chapter {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   seriesId    String
   sourceId    String
   externalId  String
   number      Float
   title       String?
   publishedAt DateTime?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
 
   series   Series     @relation(fields: [seriesId], references: [id], onDelete: Cascade)
   source   Source     @relation(fields: [sourceId], references: [id], onDelete: Restrict)
@@ -144,15 +147,15 @@ model Chapter {
 
 /// Imagen de un Capítulo y su estado de caché en R2.
 model Page {
-  id         String     @id @default(cuid())
-  chapterId  String
-  position   Int
-  sourceUrl  String
-  r2Key      String?
-  status     PageStatus @default(PENDING)
-  mimeType   String?
-  bytes      Int?
-  updatedAt  DateTime   @updatedAt
+  id        String     @id @default(cuid())
+  chapterId String
+  position  Int
+  sourceUrl String
+  r2Key     String?
+  status    PageStatus @default(PENDING)
+  mimeType  String?
+  bytes     Int?
+  updatedAt DateTime   @updatedAt
 
   chapter Chapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
 
@@ -162,17 +165,17 @@ model Page {
 
 /// Usuario de la plataforma. Better Auth es dueño de credenciales y sesiones (#7).
 model User {
-  id                    String   @id
+  id                    String    @id
   name                  String
-  email                 String   @unique
-  emailVerified         Boolean  @default(false)
+  email                 String    @unique
+  emailVerified         Boolean   @default(false)
   image                 String?
-  username              String?  @unique
-  role                  UserRole @default(USER)
+  username              String?   @unique
+  role                  UserRole  @default(USER)
   commentsBlockedAt     DateTime?
   commentsBlockedReason String?
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 
   sessions           Session[]
   accounts           Account[]
@@ -359,12 +362,12 @@ model Comment {
   deletedById   String?
   deletedAt     DateTime?
 
-  author    User?    @relation("CommentAuthor", fields: [authorId], references: [id], onDelete: SetNull)
-  moderator User?    @relation("CommentModerator", fields: [moderatedById], references: [id], onDelete: SetNull)
-  deleter   User?    @relation("CommentDeleter", fields: [deletedById], references: [id], onDelete: SetNull)
-  series    Series   @relation(fields: [seriesId], references: [id], onDelete: Cascade)
-  chapter   Chapter? @relation(fields: [chapterId], references: [id], onDelete: Cascade)
-  parent    Comment? @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  author    User?     @relation("CommentAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  moderator User?     @relation("CommentModerator", fields: [moderatedById], references: [id], onDelete: SetNull)
+  deleter   User?     @relation("CommentDeleter", fields: [deletedById], references: [id], onDelete: SetNull)
+  series    Series    @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+  chapter   Chapter?  @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  parent    Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
   replies   Comment[] @relation("CommentReplies")
 
   reactions     CommentReaction[]
