@@ -16,6 +16,10 @@ _Avoid_: inventario, listado, librería
 Consulta textual de un visitante o Usuario sobre los títulos del Catálogo.
 _Avoid_: filtro, búsqueda avanzada
 
+**Filtro**:
+Restricción sobre un atributo de las Series del Catálogo (género o estado), aplicable sola o junto a una Búsqueda.
+_Avoid_: búsqueda, categoría
+
 **Fuente**:
 Sitio externo del que se obtiene contenido o metadata (Olympus, MangaDex).
 _Avoid_: scraper, proveedor, backend

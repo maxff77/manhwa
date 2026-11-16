@@ -5,9 +5,9 @@ Spec del ticket [#15](https://github.com/maxff77/manhwa/issues/15). Cómo busca 
 ## Alcance
 
 - **Solo Catálogo**: busca sobre las Series ya ingestadas en la DB. No busca en la Biblioteca del Usuario ni en Colecciones.
-- **Solo títulos**: `title` y `originalTitle`. Sinopsis, géneros y autores quedan fuera de la búsqueda textual; géneros y autores irán como filtros en otro ticket.
+- **Solo títulos**: `title` y `originalTitle`. Sinopsis y autores quedan fuera de la búsqueda textual; los géneros y el estado filtran en `docs/specs/catalog.md`.
 - **Sin fuzzy**: no hay tolerancia a erratas, sinónimos ni transliteraciones en v1.
-- **Fuera de este spec**: filtros por género/estado/tipo, orden por popularidad, página de inicio y recomendaciones. Ver el ticket de catálogo navegable.
+- **Fuera de este spec**: filtros, orden sin `q` y página de inicio; se definen en `docs/specs/catalog.md`.
 
 ## Datos
 
@@ -21,7 +21,7 @@ Spec del ticket [#15](https://github.com/maxff77/manhwa/issues/15). Cómo busca 
 
 - `q` se recorta. Máximo 100 caracteres y 8 términos separados por espacios; los términos sobrantes se ignoran.
 - **Todos los términos deben coincidir**: cada término aparece como substring en `titleNormalized` o en `originalTitleNormalized` (la condición se evalúa por término, no por columna).
-- Sin mínimo de caracteres. `q` vacía o solo espacios devuelve `200` con lista vacía.
+- Sin mínimo de caracteres. `q` sin términos (ausente, vacía o solo espacios) no restringe el texto: la petición es un listado de catálogo y le aplican los filtros y el orden de `docs/specs/catalog.md`.
 - Los caracteres `%`, `_` y `\` de cada término se escapan antes del `ILIKE`. Consulta SQL parametrizada.
 - Sin `unaccent`, sin `pg_trgm` y sin índice GIN en v1: el escaneo de ~890 filas es de microsegundos. El índice se evalúa cuando el catálogo pase de ~10.000 Series o la p95 supere 50 ms.
 - `tsvector` descartado: no hace substring y el stemming estorba con nombres propios y préstamos.
@@ -36,12 +36,13 @@ Desempate: `titleNormalized` ascendente, luego `id` ascendente. Sin popularidad 
 
 ## API
 
-`GET /api/series?q=<texto>&limit=<n>&cursor=<opaco>`
+`GET /api/series?q=<texto>&genre=<g>&status=<s>&sort=<orden>&limit=<n>&cursor=<opaco>`
 
 - Pública, sin sesión.
-- Modo búsqueda cuando el parámetro `q` está presente, aunque venga vacío. Sin `q`, el comportamiento del listado de catálogo lo define el ticket de catálogo navegable.
+- Modo búsqueda solo cuando `q` tiene algún término. Sin términos, es un listado de catálogo con filtros y orden propios (`docs/specs/catalog.md`).
+- En modo búsqueda el orden es el de relevancia: enviar `sort` → `400`.
 - `limit`: 20 por defecto, máximo 50. Fuera de `1..50` → `400`.
-- `cursor`: opaco, codifica el offset. Inválido → `400`. La última página devuelve `nextCursor: null`.
+- `cursor`: opaco, codifica el offset y una huella de `q`+filtros+orden. No coincide o es inválido → `400`. La última página devuelve `nextCursor: null`.
 - Respuesta:
 
   ```json
@@ -53,7 +54,8 @@ Desempate: `titleNormalized` ascendente, luego `id` ascendente. Sin popularidad 
         "title": "Academia de la Ascensión",
         "coverUrl": "https://media.imagesolymp.xyz/comics/covers/11/x.webp",
         "status": "ONGOING",
-        "type": "MANHWA"
+        "type": "MANHWA",
+        "latestChapter": { "number": 201, "publishedAt": "2026-11-07T13:36:00.000Z" }
       }
     ],
     "nextCursor": "b3JkZXI6MjA"
@@ -61,6 +63,7 @@ Desempate: `titleNormalized` ascendente, luego `id` ascendente. Sin popularidad 
   ```
 
 - `coverUrl` es la portada ya resuelta según el modo de imágenes vigente (`docs/specs/image-pipeline.md`).
+- `latestChapter` es `null` si la Serie no tiene Capítulos ingeridos.
 - Sin `total` en la respuesta: el cliente pagina con `nextCursor`.
 - Errores de validación (`limit`, `cursor`, `q` de más de 100 caracteres) → `400` con cuerpo `{ "error": "<motivo>" }`.
 
@@ -70,7 +73,10 @@ Desempate: `titleNormalized` ascendente, luego `id` ascendente. Sin popularidad 
 - [ ] `q=ACADEMIA` y `q=académia` devuelven el mismo conjunto.
 - [ ] `q=academia ascension` encuentra «Academia de la Ascensión» (términos separados, cualquier orden).
 - [ ] `q=100%` no devuelve todo: el wildcard se escapa.
-- [ ] `q=` devuelve `200 { items: [], nextCursor: null }`.
+- [ ] `q=` (sin términos) devuelve la primera página del catálogo, igual que sin `q`.
+- [ ] `q=academia&sort=latest` devuelve `400`.
+- [ ] Un `cursor` emitido con otra búsqueda, filtros u orden devuelve `400`.
+- [ ] Cada ítem incluye `latestChapter` (o `null`).
 - [ ] `limit=51` y `cursor` inválido devuelven `400`.
 - [ ] Con datos estables, dos páginas consecutivas no repiten ni saltan Series.
 - [ ] Las coincidencias exactas y de prefijo aparecen antes que las coincidencias internas.
