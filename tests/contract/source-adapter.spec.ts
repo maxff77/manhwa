@@ -1,4 +1,4 @@
-import { getSourceAdapter } from "../src/sources/registry";
+import { getAdapter, getSourceAdapter } from "../../src/sources/registry";
 import { expect, test } from "@playwright/test";
 
 // Cableado de Fuentes: todavía no hay consumidor HTTP; la ingesta lo cubrirá
@@ -29,4 +29,12 @@ test("una Fuente sin adaptador no se cae en el adaptador falso", () => {
   process.env.SOURCE_ADAPTER = "olympus";
 
   expect(() => getSourceAdapter()).toThrow("Fuente sin adapter: olympus");
+});
+
+test("getAdapter resuelve la Fuente por slug", () => {
+  expect(getAdapter("fake").slug).toBe("fake");
+});
+
+test("getAdapter falla con un error claro para una Fuente desconocida", () => {
+  expect(() => getAdapter("desconocida")).toThrow("Fuente sin adapter: desconocida");
 });

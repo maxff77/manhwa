@@ -11,6 +11,7 @@ const BASE_URL = `http://127.0.0.1:${PORT}`;
 
 export default defineConfig({
   testDir: "./tests",
+  testIgnore: "**/contract/**",
   fullyParallel: false,
   workers: 1,
   retries: 0,

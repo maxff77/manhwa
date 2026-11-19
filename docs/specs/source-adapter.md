@@ -211,14 +211,18 @@ export class FakeSourceAdapter implements SourceAdapter {
     seriesExternalId: string,
     chapterExternalId: string,
   ): Promise<SourcePage[]> {
-    return this.fixtures.pages[`${seriesExternalId}/${chapterExternalId}`] ?? [];
+    const key = `${seriesExternalId}/${chapterExternalId}`;
+    const pages = this.fixtures.pages[key];
+    // Capítulo vacío es []; la ausencia del listado es un fallo.
+    if (!pages) throw new SourceError("PARSE", `Sin listado de Páginas: ${key}`);
+    return pages;
   }
 }
 ```
 
 ## Checklist de aceptación
 
-Tests contra fixtures; sin red y sin DB.
+Tests contra fixtures; sin red y sin DB. La suite compartida vive en `tests/contract/` y corre con `npm run test:contract`, sin app ni Postgres. La política HTTP para los adapters reales está en `src/sources/http.ts`; ningún adapter real la consume todavía y la ejercen los tests de contrato.
 
 - [ ] `search`: query con resultados, query vacía (catálogo), cursor con más páginas y cursor final.
 - [ ] `getSeries`: todos los campos, campos opcionales ausentes, `externalId` inexistente → `NOT_FOUND`.

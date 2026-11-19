@@ -11,6 +11,7 @@
     "build": "prisma generate && next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
+    "test:contract": "playwright test --config playwright.contract.config.ts",
     "db:up": "docker compose up -d --wait db",
     "db:migrate": "prisma migrate deploy",
     "test:e2e": "npm run build && playwright test",

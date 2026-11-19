@@ -55,6 +55,14 @@ export class FakeSourceAdapter implements SourceAdapter {
     seriesExternalId: string,
     chapterExternalId: string,
   ): Promise<SourcePage[]> {
-    return this.fixtures.pages[`${seriesExternalId}/${chapterExternalId}`] ?? [];
+    const key = `${seriesExternalId}/${chapterExternalId}`;
+    const pages = this.fixtures.pages[key];
+
+    // Un Capítulo vacío es una lista []; la ausencia del listado es un fallo.
+    if (!pages) {
+      throw new SourceError("PARSE", `Sin listado de Páginas: ${key}`);
+    }
+
+    return pages;
   }
 }
