@@ -11,39 +11,48 @@ const TIMEOUT_MS = 15_000;
 export interface SourceHttp {
   /** Host al que la Fuente manda cuando bloquea. */
   trapHost: string;
-  /** Delay base del backoff; cada Fuente lo ajusta. */
+  /** Delay entre peticiones al mismo host y base del backoff; cada Fuente lo ajusta. */
   delayMs: number;
   fetch: (url: string, init: RequestInit) => Promise<Response>;
   sleep: (ms: number) => Promise<void>;
-  random: () => number;
 }
 
-/** Una petición en vuelo por host: la cola vive en esta instancia de transporte. */
-export function createSourceHttp(trapHost: string, delayMs = BASE_DELAY_MS): SourceHttp {
+/**
+ * Una petición en vuelo por host, espaciada `delayMs`: la cola vive en esta
+ * instancia de transporte. `timeoutMs` es ajustable para que el test de contrato
+ * compruebe el abort real sin esperar el timeout de producción.
+ */
+export function createSourceHttp(
+  trapHost: string,
+  delayMs = BASE_DELAY_MS,
+  timeoutMs = TIMEOUT_MS,
+): SourceHttp {
   const colas = new Map<string, Promise<unknown>>();
+  const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
   return {
     trapHost,
     delayMs,
     fetch: (url, init) => {
       const host = new URL(url).hostname;
-      const turno = (colas.get(host) ?? Promise.resolve()).then(() =>
-        fetch(url, { ...init, signal: AbortSignal.timeout(TIMEOUT_MS) }),
-      );
+      const previo = colas.get(host);
+      const turno = (previo ?? Promise.resolve())
+        .then(() => (previo ? sleep(delayMs) : undefined))
+        .then(() => fetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) }));
 
       // La cola avanza aunque la petición falle; el error lo ve quien la pidió.
       colas.set(host, turno.catch(() => {}));
 
       return turno;
     },
-    sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
-    random: Math.random,
+    sleep,
   };
 }
 
-/** El host trampa se ve en el Location del 302 o en la URL final si se siguió. */
+/** El host trampa se ve en el Location de un 3xx o en la URL final si se siguió. */
 function isTrap(response: Response, url: string, trapHost: string): boolean {
-  const target = response.headers.get("location") ?? response.url;
+  const redirige = response.status >= 300 && response.status < 400;
+  const target = (redirige ? response.headers.get("location") : null) ?? response.url;
 
   if (!target) {
     return false;
@@ -74,7 +83,7 @@ export async function sourceFetch(url: string, http: SourceHttp): Promise<Respon
 
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     if (attempt > 0) {
-      await http.sleep(http.delayMs * 2 ** (attempt - 1) + http.random() * http.delayMs);
+      await http.sleep(http.delayMs * 2 ** (attempt - 1) + Math.random() * http.delayMs);
     }
 
     let response: Response;
@@ -82,9 +91,9 @@ export async function sourceFetch(url: string, http: SourceHttp): Promise<Respon
     try {
       response = await http.fetch(url, { headers: { "User-Agent": SOURCE_USER_AGENT } });
     } catch (error) {
-      kind = "UPSTREAM";
-      cause = error;
-      continue;
+      // Timeout o fallo de red: el spec no lo lista entre los reintentos del
+      // adapter; el reintento es del job.
+      throw new SourceError("UPSTREAM", `La Fuente falló (UPSTREAM): ${url}`, error);
     }
 
     if (isTrap(response, url, http.trapHost)) {

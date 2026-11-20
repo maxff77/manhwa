@@ -6,7 +6,7 @@ import {
   parseSourceBody,
   sourceFetch,
 } from "../../src/sources/http";
-import { SourceError } from "../../src/sources/types";
+import { expectSourceError } from "./suite";
 
 const URL_SERIE = "https://fuente.example/series/academia";
 const TRAP_HOST = "trampa.example";
@@ -38,9 +38,23 @@ function transport(replies: Array<() => Response>) {
       sleep: async (ms: number) => {
         delays.push(ms);
       },
-      random: () => 0.5,
     },
   };
+}
+
+/** Sustituye el fetch global durante el test y lo restaura aunque el test falle. */
+async function withFetch(
+  stub: (url: string, init: RequestInit) => Promise<Response>,
+  run: () => Promise<void>,
+) {
+  const original = globalThis.fetch;
+  globalThis.fetch = stub as unknown as typeof fetch;
+
+  try {
+    await run();
+  } finally {
+    globalThis.fetch = original;
+  }
 }
 
 test("302 al host trampa seguido de 200 reintenta y tiene éxito", async () => {
@@ -56,10 +70,7 @@ test("302 al host trampa seguido de 200 reintenta y tiene éxito", async () => {
 test("403 persistente lanza BLOCKED tras 3 intentos con backoff creciente", async () => {
   const t = transport([status(403)]);
 
-  await expect(sourceFetch(URL_SERIE, t.http)).rejects.toMatchObject({
-    name: "SourceError",
-    kind: "BLOCKED",
-  });
+  await expectSourceError(sourceFetch(URL_SERIE, t.http), "BLOCKED");
   expect(t.calls).toHaveLength(3);
   expect(t.delays).toHaveLength(2);
   expect(t.delays[1]).toBeGreaterThan(t.delays[0]);
@@ -68,44 +79,46 @@ test("403 persistente lanza BLOCKED tras 3 intentos con backoff creciente", asyn
 test("el delay base del backoff es configurable por Fuente", async () => {
   const t = transport([status(403)]);
 
-  await expect(sourceFetch(URL_SERIE, { ...t.http, delayMs: 1_000 })).rejects.toMatchObject({
-    kind: "BLOCKED",
-  });
+  await expectSourceError(sourceFetch(URL_SERIE, { ...t.http, delayMs: 1_000 }), "BLOCKED");
   expect(t.delays[0]).toBeGreaterThanOrEqual(1_000);
 });
 
 test("429 agotado lanza RATE_LIMITED", async () => {
   const t = transport([status(429)]);
 
-  await expect(sourceFetch(URL_SERIE, t.http)).rejects.toMatchObject({ kind: "RATE_LIMITED" });
+  await expectSourceError(sourceFetch(URL_SERIE, t.http), "RATE_LIMITED");
   expect(t.calls).toHaveLength(3);
 });
 
 test("5xx agotado lanza UPSTREAM", async () => {
   const t = transport([status(503)]);
 
-  await expect(sourceFetch(URL_SERIE, t.http)).rejects.toMatchObject({ kind: "UPSTREAM" });
+  await expectSourceError(sourceFetch(URL_SERIE, t.http), "UPSTREAM");
   expect(t.calls).toHaveLength(3);
 });
 
 test("404 lanza NOT_FOUND sin reintentar", async () => {
   const t = transport([status(404)]);
 
-  await expect(sourceFetch(URL_SERIE, t.http)).rejects.toMatchObject({ kind: "NOT_FOUND" });
+  await expectSourceError(sourceFetch(URL_SERIE, t.http), "NOT_FOUND");
   expect(t.calls).toHaveLength(1);
   expect(t.delays).toEqual([]);
 });
 
-test("un fallo de transporte agotado lanza UPSTREAM", async () => {
+test("un fallo de transporte lanza UPSTREAM sin reintentar: el reintento es del job", async () => {
   const t = transport([ok]);
   const http = {
     ...t.http,
-    fetch: async () => {
-      throw new Error("timeout");
+    fetch: async (_url: string, init: RequestInit) => {
+      t.calls.push(init);
+
+      throw new Error("sin red");
     },
   };
 
-  await expect(sourceFetch(URL_SERIE, http)).rejects.toMatchObject({ kind: "UPSTREAM" });
+  await expectSourceError(sourceFetch(URL_SERIE, http), "UPSTREAM");
+  expect(t.calls).toHaveLength(1);
+  expect(t.delays).toEqual([]);
 });
 
 test("cada petición lleva el User-Agent de bot propio", async () => {
@@ -128,52 +141,103 @@ test("un parseo roto lanza PARSE y nunca devuelve una lista parcial", async () =
     throw new SyntaxError("HTML roto");
   };
 
-  await expect(parseSourceBody(response, parseRoto)).rejects.toBeInstanceOf(SourceError);
-  await expect(parseSourceBody(response, parseRoto)).rejects.toMatchObject({ kind: "PARSE" });
+  await expectSourceError(parseSourceBody(response, parseRoto), "PARSE");
 });
 
 test("el transporte por defecto aplica timeout y UA de bot", async () => {
-  const original = globalThis.fetch;
   const inits: RequestInit[] = [];
 
-  globalThis.fetch = (async (_url: string, init: RequestInit) => {
-    inits.push(init);
+  await withFetch(
+    async (_url, init) => {
+      inits.push(init);
 
-    return ok();
-  }) as unknown as typeof fetch;
+      return ok();
+    },
+    async () => {
+      const response = await sourceFetch(URL_SERIE, createSourceHttp(TRAP_HOST));
 
-  try {
-    const response = await sourceFetch(URL_SERIE, createSourceHttp(TRAP_HOST));
+      expect(response.status).toBe(200);
+      expect(inits[0]?.signal).toBeInstanceOf(AbortSignal);
+      expect(new Headers(inits[0]?.headers).get("User-Agent")).toBe(SOURCE_USER_AGENT);
+    },
+  );
+});
 
-    expect(response.status).toBe(200);
-    expect(inits[0]?.signal).toBeInstanceOf(AbortSignal);
-    expect(new Headers(inits[0]?.headers).get("User-Agent")).toBe(SOURCE_USER_AGENT);
-  } finally {
-    globalThis.fetch = original;
-  }
+test("el timeout aborta la petición de verdad y lanza UPSTREAM", async () => {
+  let abortado = false;
+  let intentos = 0;
+
+  await withFetch(
+    (_url, init) =>
+      new Promise<Response>((_resolve, reject) => {
+        intentos += 1;
+        init.signal?.addEventListener("abort", () => {
+          abortado = true;
+          reject(new Error("timeout"));
+        });
+      }),
+    async () => {
+      await expectSourceError(
+        sourceFetch(URL_SERIE, createSourceHttp(TRAP_HOST, 1, 30)),
+        "UPSTREAM",
+      );
+    },
+  );
+
+  expect(abortado).toBe(true);
+  expect(intentos).toBe(1);
 });
 
 test("el transporte por defecto deja una petición en vuelo por host", async () => {
-  const original = globalThis.fetch;
   let enVuelo = 0;
   let maxEnVuelo = 0;
 
-  globalThis.fetch = (async () => {
-    enVuelo += 1;
-    maxEnVuelo = Math.max(maxEnVuelo, enVuelo);
-    await new Promise((resolve) => setTimeout(resolve, 5));
-    enVuelo -= 1;
+  await withFetch(
+    async () => {
+      enVuelo += 1;
+      maxEnVuelo = Math.max(maxEnVuelo, enVuelo);
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      enVuelo -= 1;
 
-    return ok();
-  }) as unknown as typeof fetch;
+      return ok();
+    },
+    async () => {
+      const http = createSourceHttp(TRAP_HOST, 1);
 
-  try {
-    const http = createSourceHttp(TRAP_HOST);
+      await Promise.all([sourceFetch(URL_SERIE, http), sourceFetch(URL_SERIE, http)]);
+    },
+  );
 
-    await Promise.all([sourceFetch(URL_SERIE, http), sourceFetch(URL_SERIE, http)]);
+  expect(maxEnVuelo).toBe(1);
+});
 
-    expect(maxEnVuelo).toBe(1);
-  } finally {
-    globalThis.fetch = original;
-  }
+test("un 200 con Location al host trampa no es un bloqueo", async () => {
+  const t = transport([
+    () => new Response("cuerpo", { status: 200, headers: { location: `https://${TRAP_HOST}/x` } }),
+  ]);
+
+  const response = await sourceFetch(URL_SERIE, t.http);
+
+  expect(response.status).toBe(200);
+  expect(t.calls).toHaveLength(1);
+});
+
+test("el transporte por defecto espacia las peticiones al mismo host con delayMs", async () => {
+  const inicios: number[] = [];
+
+  await withFetch(
+    async () => {
+      inicios.push(Date.now());
+
+      return ok();
+    },
+    async () => {
+      const http = createSourceHttp(TRAP_HOST, 80);
+
+      await Promise.all([sourceFetch(URL_SERIE, http), sourceFetch(URL_SERIE, http)]);
+    },
+  );
+
+  expect(inicios).toHaveLength(2);
+  expect(inicios[1] - inicios[0]).toBeGreaterThanOrEqual(70);
 });

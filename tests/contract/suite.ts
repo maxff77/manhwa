@@ -1,7 +1,17 @@
 import { expect, test } from "@playwright/test";
 
 import type { FakeFixtures } from "../../src/sources/fake";
-import { SourceError, type SourceAdapter } from "../../src/sources/types";
+import {
+  SourceError,
+  type SourceAdapter,
+  type SourceErrorKind,
+} from "../../src/sources/types";
+
+/** Un fallo del contrato es siempre un `SourceError` del `kind` pedido. */
+export async function expectSourceError(promise: Promise<unknown>, kind: SourceErrorKind) {
+  await expect(promise).rejects.toBeInstanceOf(SourceError);
+  await expect(promise).rejects.toMatchObject({ kind });
+}
 
 const chapter = (n: number) => ({
   externalId: `capitulo-${n}`,
@@ -154,10 +164,7 @@ export function sourceAdapterContract(name: string, createAdapter: () => SourceA
     });
 
     test("getSeries lanza NOT_FOUND para una Serie inexistente", async () => {
-      const adapter = createAdapter();
-
-      await expect(adapter.getSeries("inexistente")).rejects.toBeInstanceOf(SourceError);
-      await expect(adapter.getSeries("inexistente")).rejects.toMatchObject({ kind: "NOT_FOUND" });
+      await expectSourceError(createAdapter().getSeries("inexistente"), "NOT_FOUND");
     });
 
     test("listChapters conserva el orden, el número no parseable y el duplicado", async () => {
@@ -221,14 +228,7 @@ export function sourceAdapterContract(name: string, createAdapter: () => SourceA
     });
 
     test("getChapterPages lanza PARSE si falta el listado de Páginas", async () => {
-      const adapter = createAdapter();
-
-      await expect(adapter.getChapterPages("academia", "capitulo-3")).rejects.toBeInstanceOf(
-        SourceError,
-      );
-      await expect(adapter.getChapterPages("academia", "capitulo-3")).rejects.toMatchObject({
-        kind: "PARSE",
-      });
+      await expectSourceError(createAdapter().getChapterPages("academia", "capitulo-3"), "PARSE");
     });
   });
 }
