@@ -388,29 +388,28 @@ export class OlympusSourceAdapter implements SourceAdapter {
     seriesExternalId: string,
     chapterExternalId: string,
   ): Promise<SourcePage[]> {
-    const url = `${seriesUrl(seriesExternalId)}/capitulo/${encodeURIComponent(chapterExternalId)}`;
-    const response = await sourceFetch(url, this.http);
+    // El HTML del lector lo bloquea el anti-bot (smoke del #20: 302 al host
+    // trampa agotados los reintentos); la API JSON responde. Mismo contrato.
+    const url = `${BASE}/api/capitulo/${apiSlug(seriesExternalId)}/${encodeURIComponent(chapterExternalId)}?type=comic`;
+    const body = await this.getJson(url);
 
-    return parseSourceBody(response, (html) => {
-      // Las Páginas son los <img> del strip de lectura, en orden (#13, Keiyoushi).
-      const strip = /<main[^>]*class="[^"]*\bstrip\b[^"]*"[^>]*>([\s\S]*?)<\/main>/i.exec(html);
-
-      if (!strip) {
-        throw new TypeError(`Sin listado de Páginas: ${url}`);
+    try {
+      if (!isRecord(body) || !isRecord(body.chapter)) {
+        throw new TypeError("Capítulo inesperado de Olympus");
       }
 
-      const pages: SourcePage[] = [];
+      const urls = requireArray(body.chapter.pages, "chapter.pages");
 
-      for (const img of strip[1].matchAll(/<img\b[^>]*>/gi)) {
-        const src = /\bsrc\s*=\s*"([^"]+)"/i.exec(img[0])?.[1];
+      return urls.map((value, position) => ({
+        position,
+        url: new URL(requireString(value, "chapter.pages[]"), url).href,
+      }));
+    } catch (error) {
+      if (error instanceof SourceError) throw error;
 
-        if (src) {
-          pages.push({ position: pages.length, url: new URL(src, url).href });
-        }
-      }
-
-      return pages;
-    });
+      // Forma inesperada del payload: PARSE, nunca una lista parcial.
+      throw new SourceError("PARSE", `Sin listado de Páginas: ${url}`, error);
+    }
   }
 }
 

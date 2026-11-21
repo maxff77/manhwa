@@ -238,14 +238,16 @@ Tests contra fixtures; sin red y sin DB. La suite compartida vive en `tests/cont
 - [x] `search` recorre el Catálogo paginado (`/api/series?page=N`) y filtra localmente por título normalizado sobre `/api/series/list` cacheado; sin red en los tests.
 - [x] `getSeries` mapea título, sinopsis, estado y géneros desde `/api/series/<slug>?type=comic`. Autores y año: Olympus no los expone; quedan vacíos hasta una Fuente de metadata (spec v1).
 - [x] `listChapters` usa el JSON paginado de 40 por página (`direction=asc`) y exige el `meta.total` anunciado; `listRecentChapters` pide `direction=desc`.
-- [x] `getChapterPages` parsea las URLs de las Páginas del HTML (`main.strip img`) en orden 0-based.
+- [x] `getChapterPages` lee las URLs de las Páginas del JSON `/api/capitulo/<slug>/<segmento>?type=comic` (`chapter.pages`) en orden 0-based.
 - [x] El adapter real pasa la misma suite de contrato que el fake, con fixtures (`tests/contract/olympus-source-adapter.spec.ts`).
 - [x] Los 302 al host trampa, 403, 429 y 5xx se reintentan y, al agotarse, lanzan el `kind` correcto (`tests/contract/olympus-http.spec.ts`).
 - [ ] Smoke manual contra Olympus ejecutado por una persona (procedimiento abajo); el agente no rastrea producción.
 
 ## Mecanismo de Olympus
 
-El listado de capítulos de Olympus es JSON paginado en `/api/series/<slug>/chapters?page=N&direction=asc|desc&type=comic` (40 por página, `meta.last_page`); el slug de la API no lleva el prefijo `comic-`. La página de un Capítulo sigue siendo HTML para `getChapterPages`. Detalle en la resolución de [Mecanismo de listado de capítulos de Olympus](https://github.com/maxff77/manhwa/issues/13).
+El listado de capítulos de Olympus es JSON paginado en `/api/series/<slug>/chapters?page=N&direction=asc|desc&type=comic` (40 por página, `meta.last_page`); el slug de la API no lleva el prefijo `comic-`. Detalle en la resolución de [Mecanismo de listado de capítulos de Olympus](https://github.com/maxff77/manhwa/issues/13).
+
+Las Páginas también son JSON: `GET /api/capitulo/<slug>/<segmento>?type=comic` devuelve `{ chapter: { pages: [url, ...] } }`, en orden de lectura. #13 había dejado este paso como HTML (`main.strip img`), pero el smoke del #20 lo vio bloqueado: el 302 al host trampa agotó los tres reintentos y lanzó `BLOCKED`, mientras las otras cuatro operaciones (todas JSON) respondieron. El mecanismo es interno al adapter, así que el contrato no cambia.
 
 La Búsqueda no tiene endpoint server-side (#14): query vacía pagina `/api/series?page=N`; query no vacía descarga `/api/series/list` una vez (caché de 10 min, solo `type === "comic"`), normaliza NFD + minúsculas + trim y pagina en local de 20 en 20. Cursores opacos base64url (`{v,p}` para páginas, `{v,q,o}` para offsets). Un fallo del catálogo lanza `SourceError`; nunca se devuelve una lista vacía que mentiría sobre «sin resultados».
 

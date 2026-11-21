@@ -3,7 +3,7 @@ title: "El adapter real de Olympus ya existe: el mecanismo se verificó y la sui
 author: Richard
 date: 2026-11-21
 branch: main
-cost: { minutes: 126, tokens: 33984587 }
+cost: { minutes: 150, tokens: 43325751 }
 id: l-441dc5bb
 scope: repo
 status: active
@@ -30,6 +30,9 @@ touches:
 - El smoke es un comando del repo, no un script improvisado: un solo test encadena las cinco operaciones del adapter con su transporte real (UA de bot propio, espaciado de 500 ms, timeout por petición) e imprime lo observado. Son 5 peticiones como máximo.
 - Vive aislado por construcción: config propia sin app ni Postgres, y la config de la app excluye tanto la carpeta de contrato como la de smoke. Verificado con `--list`: 63 tests de contrato, 5 de la app, 1 de smoke, sin solapamiento. No hay workflows de CI en el repo.
 - El issue queda abierto con label `ready-for-human` hasta que esa persona pegue la salida; entonces se marca la casilla del spec, se commitea y se cierra, lo que desbloquea la ingesta del Catálogo (#21). Las alertas (#33) siguen bloqueadas además por Seguimientos (#30) y PWA (#32).
+- `getChapterPages` pide `/api/capitulo/<slug>/<segmento>?type=comic` y lee `chapter.pages` (array de URLs) en orden 0-based. El smoke contra producción del #20 lo probó: las cuatro operaciones JSON respondieron y el HTML del lector devolvió 302 al host trampa hasta agotar los tres reintentos (`SourceError BLOCKED`).
+- Esto sustituye la recomendación de #13, que dejaba este paso como HTML (`main.strip img`). El contrato lo permite explícitamente: «El mecanismo de obtención (HTML, JSON o JS) es interno al adapter; el pipeline no lo conoce». Ninguna firma, DTO ni test de contrato cambió de forma: solo el transporte y las fixtures.
+- Las URLs relativas se resuelven contra la URL pedida con `new URL(...)`, así un payload con rutas relativas sigue dando URLs absolutas.
 
 ## Tried and ruled out
 - Relajar autores/año a `Array.isArray` / `undefined-or-number` para que el adapter real pasara: debilitaba el contrato para ponerlo verde. Se revirtió en la revisión; cada Fuente afirma lo que expone.
@@ -37,6 +40,8 @@ touches:
 - Que el agente ejecute el smoke con autorización explícita: el responsable eligió correrlo él; ejecutarlo el agente contradice el criterio del ticket aunque se autorice puntualmente.
 - Cerrar #20 con el smoke documentado pero sin ejecutar: dejaría la única verificación contra producción sin hacer y sin registro del riesgo; se descartó.
 - Importar el adapter `.ts` desde un script Node suelto: Node 24 falla con `ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX` (parameter properties en strip-only mode). Se usa Playwright, que ya era devDependency: cero dependencias nuevas.
+- Mantener el parseo del HTML del lector con el UA de bot propio: el anti-bot lo bloquea (medido en el smoke). Cambiar a UA de navegador está prohibido por la política HTTP del spec («nunca UA de navegador ni de crawler de IA»), así que no era una salida.
+- Reintentar más veces o subir el delay para el HTML: el bloqueo no es rate limiting, es el 302 al host trampa; más intentos solo alargan el fallo.
 
 ## Watch out
 - `trail check` marca 7 conflictos léxicos sobre el texto del spec (suite/app, adapter real, autores/año, `/api/series`, redirect 302, cursor, Chrome). Verificados uno por uno contra el código commiteado: la suite de contrato sigue fuera de la config de la app (`testIgnore: "**/contract/**"`), no hay cambios en `src/app`, no se envía ningún parámetro de texto a `/api/series`, y el seam de la app sigue corriendo en Chromium. La justificación va en ambos mensajes de commit.
@@ -55,3 +60,10 @@ In the code:
 - playwright.config.ts (`testIgnore: ["**/contract/**", "**/smoke/**"]`)
 - docs/specs/source-adapter.md:244 (casilla del smoke, sin marcar) y sección «Smoke manual»
 - Commits en origin/main: 3b1746f, ac5b33d, a41a54f, 0924b34
+- Un `BLOCKED` en una sola operación mientras las demás responden señala el mecanismo de esa operación, no la política HTTP entera. Antes de tocar reintentos o delays, comprobar si existe un endpoint JSON para ese paso.
+- Los clientes públicos difieren: Keiyoushi parsea HTML, Msopla usa el JSON. Que uno funcione no prueba que el otro camino siga abierto.
+- `trail check` sobre este cambio marca conflictos léxicos («orden por», «que devuelve», «sets del to 20») contra learnings de popularidad, cursores opacos y el smoke sin ejecutar. Ninguno aplica: no se añade orden por popularidad, los cursores siguen opacos y el smoke sí se ejecutó (falló y motivó este cambio). La justificación va en el mensaje de commit.
+
+- src/sources/olympus.ts (`getChapterPages`), tests/contract/support/olympus-fixtures.ts (`chapterPayload`, `chapterPagesJson`, `olympusUrls.academiaChapter1`)
+- docs/specs/source-adapter.md:241 y :250 (mecanismo JSON de las Páginas y por qué se supersede #13)
+- La casilla del smoke (docs/specs/source-adapter.md:244) sigue sin marcar: hay que repetir `npm run smoke:olympus` tras este cambio, y lo corre una persona.

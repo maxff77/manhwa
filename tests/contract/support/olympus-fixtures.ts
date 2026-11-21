@@ -115,29 +115,23 @@ function chaptersPayload(
   };
 }
 
-/** HTML de Capítulo con sus Páginas en orden, más un logo fuera del strip que no es Página. */
-function chapterHtml(images: string[]): string {
-  const imgs = images.map((src) => `<div class="panel"><img src="${src}" /></div>`).join("\n");
-
-  return `<!doctype html><html><head><title>Capítulo</title></head><body>
-<header><img src="https://olympusxyz.com/logo.webp" /></header>
-<main class="strip">
-${imgs}
-</main>
-</body></html>`;
+/**
+ * `/api/capitulo/<slug>/<segmento>?type=comic`: las Páginas vienen como URLs en
+ * `chapter.pages`. El HTML del lector queda fuera: el smoke contra producción
+ * lo vio bloqueado (302 al host trampa) mientras la API respondía.
+ */
+function chapterPayload(urls: string[]) {
+  return { chapter: { pages: urls } };
 }
 
-const ACADEMIA_PATH = `/series/comic-${academia.slug}`;
-
-const chapterPagesHtml: Record<string, string> = {
-  [`${ACADEMIA_PATH}/capitulo/1`]: chapterHtml([
+const chapterPagesJson: Record<string, unknown> = {
+  [`/api/capitulo/${academia.slug}/1?type=comic`]: chapterPayload([
     `${MEDIA}/academia/1/1_01.webp`,
     `${MEDIA}/academia/1/1_02.webp`,
   ]),
-  [`${ACADEMIA_PATH}/capitulo/extra`]: chapterHtml([]),
-  // Sin strip de Páginas: el adapter debe lanzar PARSE, no devolver [].
-  [`${ACADEMIA_PATH}/capitulo/3`]:
-    "<!doctype html><html><body><main><p>Capítulo no disponible.</p></main></body></html>",
+  [`/api/capitulo/${academia.slug}/extra?type=comic`]: chapterPayload([]),
+  // Sin `chapter.pages`: el adapter debe lanzar PARSE, no devolver [].
+  [`/api/capitulo/${academia.slug}/3?type=comic`]: { error: true },
 };
 
 /** Rutas JSON/HTML que sirve el transporte falso, con la forma real de Olympus. */
@@ -175,8 +169,8 @@ export function olympusResponses(): Map<string, unknown> {
   responses.set(desc(larga.slug, 1), chaptersPayload(largaDesc.slice(0, 40), 1, 2, 45));
   responses.set(desc(larga.slug, 2), chaptersPayload(largaDesc.slice(40), 2, 2, 45));
 
-  for (const [path, html] of Object.entries(chapterPagesHtml)) {
-    responses.set(path, html);
+  for (const [path, payload] of Object.entries(chapterPagesJson)) {
+    responses.set(path, payload);
   }
 
   return responses;
@@ -204,7 +198,7 @@ export const olympusUrls = {
   catalogList: `${BASE}/api/series/list`,
   academiaDetail: `${BASE}/api/series/${academia.slug}?type=comic`,
   academiaChaptersAsc1: `${BASE}/api/series/${academia.slug}/chapters?page=1&direction=asc&type=comic`,
-  academiaChapter1: `${BASE}${ACADEMIA_PATH}/capitulo/1`,
+  academiaChapter1: `${BASE}/api/capitulo/${academia.slug}/1?type=comic`,
 };
 
 export interface FixtureTransport {
