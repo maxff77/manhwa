@@ -25,10 +25,16 @@ test("sin SOURCE_ADAPTER no se cae en el adaptador falso", () => {
   expect(() => getSourceAdapter()).toThrow("SOURCE_ADAPTER no configurada");
 });
 
-test("una Fuente sin adaptador no se cae en el adaptador falso", () => {
+test("SOURCE_ADAPTER=olympus compone el adaptador real", () => {
   process.env.SOURCE_ADAPTER = "olympus";
 
-  expect(() => getSourceAdapter()).toThrow("Fuente sin adapter: olympus");
+  expect(getSourceAdapter().slug).toBe("olympus");
+});
+
+test("una Fuente sin adaptador no se cae en el adaptador falso", () => {
+  process.env.SOURCE_ADAPTER = "fuente-sin-registro";
+
+  expect(() => getSourceAdapter()).toThrow("Fuente sin adapter: fuente-sin-registro");
 });
 
 test("getAdapter resuelve la Fuente por slug", () => {

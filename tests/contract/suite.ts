@@ -19,6 +19,7 @@ const chapter = (n: number) => ({
   url: `/series/larga/capitulo/capitulo-${n}`,
 });
 
+
 /** Fixtures canónicas del contrato: cualquier adapter real debe servir estos mismos datos. */
 export const contractFixtures: FakeFixtures = {
   search: {
@@ -39,6 +40,11 @@ export const contractFixtures: FakeFixtures = {
         items: [
           { externalId: "academia", title: "Academia de la Ascensión", url: "/series/academia" },
         ],
+      },
+    },
+    larga: {
+      first: {
+        items: [{ externalId: "larga", title: "La Serie Larga", url: "/series/larga" }],
       },
     },
   },
@@ -104,6 +110,10 @@ export const contractFixtures: FakeFixtures = {
 /**
  * Suite de contrato del `SourceAdapter`: la corre el fake y la correrá cualquier
  * adapter real construido sobre estas mismas fixtures. Sin red y sin DB.
+ *
+ * La identidad externa es propia de cada Fuente (el fake usa slugs cortos,
+ * Olympus los suyos con prefijo de tipo), así que la suite afirma títulos,
+ * números y orden —los datos del contrato— y nunca literales de identidad.
  */
 export function sourceAdapterContract(name: string, createAdapter: () => SourceAdapter) {
   test.describe(name, () => {
@@ -112,20 +122,23 @@ export function sourceAdapterContract(name: string, createAdapter: () => SourceA
 
       const first = await adapter.search("");
 
-      expect(first.items.map((series) => series.externalId)).toEqual(["academia", "bruma"]);
+      expect(first.items.map((series) => series.title)).toEqual([
+        "Academia de la Ascensión",
+        "Bruma del Norte",
+      ]);
       // El cursor es opaco: solo se comprueba que existe y se devuelve tal cual.
       expect(typeof first.nextCursor).toBe("string");
 
       const second = await adapter.search("", first.nextCursor);
 
-      expect(second.items.map((series) => series.externalId)).toEqual(["ceniza"]);
+      expect(second.items.map((series) => series.title)).toEqual(["Ceniza y Oro"]);
       expect(second.nextCursor).toBeUndefined();
     });
 
     test("search con query devuelve los resultados de la Fuente", async () => {
       const page = await createAdapter().search("academia");
 
-      expect(page.items.map((series) => series.externalId)).toEqual(["academia"]);
+      expect(page.items.map((series) => series.title)).toEqual(["Academia de la Ascensión"]);
       expect(page.nextCursor).toBeUndefined();
     });
 
@@ -137,23 +150,36 @@ export function sourceAdapterContract(name: string, createAdapter: () => SourceA
     });
 
     test("getSeries devuelve todos los campos del detalle", async () => {
-      // Copia independiente de las fixtures a propósito: el fake devuelve el objeto
-      // de fixtures, así que afirmar contra él pasaría por construcción.
-      expect(await createAdapter().getSeries("academia")).toEqual({
-        externalId: "academia",
-        title: "Academia de la Ascensión",
-        coverUrl: "https://media.example/academia.webp",
-        url: "/series/academia",
-        synopsis: "Una academia de magia.",
-        status: "ongoing",
-        genres: ["Acción", "Fantasía"],
-        authors: ["Autora Uno"],
-        year: 2024,
-      });
+      // Literales independientes de las fixtures a propósito: el fake devuelve el
+      // objeto de fixtures, así que afirmar contra él pasaría por construcción.
+      const adapter = createAdapter();
+      const [summary] = (await adapter.search("academia")).items;
+      const detail = await adapter.getSeries(summary.externalId);
+
+      expect(detail.externalId).toBe(summary.externalId);
+      expect(detail.title).toBe("Academia de la Ascensión");
+      expect(detail.synopsis).toBe("Una academia de magia.");
+      expect(detail.status).toBe("ongoing");
+      expect(detail.genres).toEqual(["Acción", "Fantasía"]);
+      // La portada es una URL absoluta; el Catálogo puede no anunciarla.
+      expect(detail.coverUrl?.startsWith("https://")).toBe(true);
+      if (summary.coverUrl !== undefined) {
+        expect(detail.coverUrl).toBe(summary.coverUrl);
+      }
+      expect(detail.url.endsWith(`/series/${summary.externalId}`)).toBe(true);
+      // El detalle conserva lo que el Catálogo ya anunció; autores y año son
+      // opcionales porque no toda Fuente los expone (Olympus no).
+      if (summary.status !== undefined) {
+        expect(detail.status).toBe(summary.status);
+      }
+      expect(Array.isArray(detail.authors)).toBe(true);
+      expect(detail.year === undefined || typeof detail.year === "number").toBe(true);
     });
 
     test("getSeries admite los campos opcionales ausentes", async () => {
-      const series = await createAdapter().getSeries("bruma");
+      const catalog = await createAdapter().search("");
+      const bruma = catalog.items.find((series) => series.title === "Bruma del Norte");
+      const series = await createAdapter().getSeries(bruma!.externalId);
 
       expect(series.genres).toEqual([]);
       expect(series.authors).toEqual([]);
@@ -168,67 +194,92 @@ export function sourceAdapterContract(name: string, createAdapter: () => SourceA
     });
 
     test("listChapters conserva el orden, el número no parseable y el duplicado", async () => {
-      const chapters = await createAdapter().listChapters("academia");
+      const [summary] = (await createAdapter().search("academia")).items;
+      const chapters = await createAdapter().listChapters(summary.externalId);
 
-      expect(chapters.map((chapter) => chapter.externalId)).toEqual([
-        "capitulo-1",
-        "capitulo-2",
-        "capitulo-3",
-        "capitulo-3-bis",
-      ]);
       expect(chapters.map((chapter) => chapter.number)).toEqual([1, null, 3, 3]);
+      // La identidad es el segmento de la URL, no el número parseado: el
+      // duplicado y el no numérico conservan segmentos distintos.
+      expect(new Set(chapters.map((chapter) => chapter.externalId)).size).toBe(4);
+      for (const chapter of chapters) {
+        expect(
+          chapter.url.endsWith(`/series/${summary.externalId}/capitulo/${chapter.externalId}`),
+        ).toBe(true);
+      }
     });
 
     test("listRecentChapters devuelve los más recientes primero con cursor final", async () => {
-      const page = await createAdapter().listRecentChapters("academia");
+      const adapter = createAdapter();
+      const [summary] = (await adapter.search("academia")).items;
 
-      expect(page.items.map((chapter) => chapter.externalId)).toEqual([
-        "capitulo-3-bis",
-        "capitulo-3",
-        "capitulo-2",
-        "capitulo-1",
-      ]);
+      const page = await adapter.listRecentChapters(summary.externalId);
+      const asc = await adapter.listChapters(summary.externalId);
+
+      expect(page.items.map((chapter) => chapter.externalId)).toEqual(
+        [...asc].reverse().map((chapter) => chapter.externalId),
+      );
       expect(page.nextCursor).toBeUndefined();
     });
 
     test("listRecentChapters pagina con cursor hasta el final", async () => {
       const adapter = createAdapter();
+      const larga = (await adapter.search("larga")).items[0];
 
-      const first = await adapter.listRecentChapters("larga");
+      const first = await adapter.listRecentChapters(larga.externalId);
 
       expect(first.items).toHaveLength(40);
-      expect(first.items[0]?.externalId).toBe("capitulo-45");
-      expect(first.items.at(-1)?.externalId).toBe("capitulo-6");
+      expect(first.items.map((chapter) => chapter.number)).toEqual(
+        Array.from({ length: 40 }, (_, i) => 45 - i),
+      );
       expect(typeof first.nextCursor).toBe("string");
 
-      const second = await adapter.listRecentChapters("larga", first.nextCursor);
+      const second = await adapter.listRecentChapters(larga.externalId, first.nextCursor);
 
       expect(second.items).toHaveLength(5);
-      expect(second.items[0]?.externalId).toBe("capitulo-5");
-      expect(second.items.at(-1)?.externalId).toBe("capitulo-1");
+      expect(second.items.map((chapter) => chapter.number)).toEqual([5, 4, 3, 2, 1]);
       expect(second.nextCursor).toBeUndefined();
     });
 
     test("listRecentChapters admite una Serie sin Capítulos como página vacía", async () => {
-      const page = await createAdapter().listRecentChapters("serie-inexistente");
+      // Una Serie que existe y no tiene Capítulos es una página vacía; una que
+      // no existe es NOT_FOUND (lo cubre getSeries).
+      const page = await createAdapter().listRecentChapters("sin-capitulos");
 
       expect(page.items).toEqual([]);
       expect(page.nextCursor).toBeUndefined();
     });
 
     test("getChapterPages devuelve las Páginas en orden con position 0-based", async () => {
-      expect(await createAdapter().getChapterPages("academia", "capitulo-1")).toEqual([
-        { position: 0, url: "https://media.example/1.webp" },
-        { position: 1, url: "https://media.example/2.webp" },
-      ]);
+      const adapter = createAdapter();
+      const [summary] = (await adapter.search("academia")).items;
+      const [firstChapter] = await adapter.listChapters(summary.externalId);
+
+      const pages = await adapter.getChapterPages(summary.externalId, firstChapter.externalId);
+
+      expect(pages.map((page) => page.position)).toEqual([0, 1]);
+      expect(pages.every((page) => page.url.startsWith("https://"))).toBe(true);
+      expect(new Set(pages.map((page) => page.url)).size).toBe(2);
     });
 
     test("getChapterPages admite un Capítulo vacío", async () => {
-      expect(await createAdapter().getChapterPages("academia", "capitulo-2")).toEqual([]);
+      const adapter = createAdapter();
+      const [summary] = (await adapter.search("academia")).items;
+      const chapters = await adapter.listChapters(summary.externalId);
+      const empty = chapters.find((chapter) => chapter.number === null)!;
+
+      expect(await adapter.getChapterPages(summary.externalId, empty.externalId)).toEqual([]);
     });
 
     test("getChapterPages lanza PARSE si falta el listado de Páginas", async () => {
-      await expectSourceError(createAdapter().getChapterPages("academia", "capitulo-3"), "PARSE");
+      const adapter = createAdapter();
+      const [summary] = (await adapter.search("academia")).items;
+      const chapters = await adapter.listChapters(summary.externalId);
+      const broken = chapters.find((chapter) => chapter.number === 3)!;
+
+      await expectSourceError(
+        adapter.getChapterPages(summary.externalId, broken.externalId),
+        "PARSE",
+      );
     });
   });
 }

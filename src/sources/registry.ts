@@ -1,4 +1,5 @@
 import { FakeSourceAdapter } from "./fake";
+import { olympus } from "./olympus";
 import type { SourceAdapter } from "./types";
 
 /** El adapter falso parte sin fixtures; cada test inyecta los suyos. */
@@ -11,6 +12,7 @@ export const fakeSourceAdapter = new FakeSourceAdapter({
 
 const adapters: Record<string, SourceAdapter> = {
   [fakeSourceAdapter.slug]: fakeSourceAdapter,
+  [olympus.slug]: olympus,
 };
 
 export function getAdapter(slug: string): SourceAdapter {

@@ -10,6 +10,8 @@ export interface SourceSeriesSummary {
   coverUrl?: string;
   /** URL canónica de la serie en la Fuente. */
   url: string;
+  /** Estado si el listado lo expone; el backfill lo usa sin pedir el detalle (v1 spec). */
+  status?: SourceSeriesStatus;
 }
 
 export interface SourceSeriesDetail extends SourceSeriesSummary {

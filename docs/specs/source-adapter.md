@@ -222,7 +222,7 @@ export class FakeSourceAdapter implements SourceAdapter {
 
 ## Checklist de aceptación
 
-Tests contra fixtures; sin red y sin DB. La suite compartida vive en `tests/contract/` y corre con `npm run test:contract`, sin app ni Postgres. La política HTTP para los adapters reales está en `src/sources/http.ts`; ningún adapter real la consume todavía y la ejercen los tests de contrato.
+Tests contra fixtures; sin red y sin DB. La suite compartida vive en `tests/contract/` y corre con `npm run test:contract`, sin app ni Postgres. La política HTTP para los adapters reales está en `src/sources/http.ts`; el adapter de Olympus la consume y sus tests de contrato la ejercen con un transporte de fixtures.
 
 - [x] `search`: query con resultados, query vacía (catálogo), cursor con más páginas y cursor final.
 - [x] `getSeries`: todos los campos, campos opcionales ausentes, `externalId` inexistente → `NOT_FOUND`.
@@ -233,6 +233,32 @@ Tests contra fixtures; sin red y sin DB. La suite compartida vive en `tests/cont
 - [x] Nunca se devuelve una lista parcial: un error en mitad del parseo lanza.
 - [x] El `FakeSourceAdapter` pasa la misma suite que cualquier adapter real.
 
+### Adapter de Olympus (#20)
+
+- [x] `search` recorre el Catálogo paginado (`/api/series?page=N`) y filtra localmente por título normalizado sobre `/api/series/list` cacheado; sin red en los tests.
+- [x] `getSeries` mapea título, sinopsis, estado y géneros desde `/api/series/<slug>?type=comic`. Autores y año: Olympus no los expone; quedan vacíos hasta una Fuente de metadata (spec v1).
+- [x] `listChapters` usa el JSON paginado de 40 por página (`direction=asc`) y exige el `meta.total` anunciado; `listRecentChapters` pide `direction=desc`.
+- [x] `getChapterPages` parsea las URLs de imagen del HTML (`main.strip img`) en orden 0-based.
+- [x] El adapter real pasa la misma suite de contrato que el fake, con fixtures (`tests/contract/olympus-source-adapter.spec.ts`).
+- [x] Los 302 al host trampa, 403, 429 y 5xx se reintentan y, al agotarse, lanzan el `kind` correcto (`tests/contract/olympus-http.spec.ts`).
+- [ ] Smoke manual contra Olympus ejecutado por una persona (procedimiento abajo); el agente no rastrea producción.
+
 ## Mecanismo de Olympus
 
 El listado de capítulos de Olympus es JSON paginado en `/api/series/<slug>/chapters?page=N&direction=asc|desc&type=comic` (40 por página, `meta.last_page`); el slug de la API no lleva el prefijo `comic-`. La página de un Capítulo sigue siendo HTML para `getChapterPages`. Detalle en la resolución de [Mecanismo de listado de capítulos de Olympus](https://github.com/maxff77/manhwa/issues/13).
+
+La Búsqueda no tiene endpoint server-side (#14): query vacía pagina `/api/series?page=N`; query no vacía descarga `/api/series/list` una vez (caché de 10 min, solo `type === "comic"`), normaliza NFD + minúsculas + trim y pagina en local de 20 en 20. Cursores opacos base64url (`{v,p}` para páginas, `{v,q,o}` para offsets). Un fallo del catálogo lanza `SourceError`; nunca se devuelve una lista vacía que mentiría sobre «sin resultados».
+
+### Smoke manual (lo ejecuta una persona)
+
+El agente no hace scraping de producción. Procedimiento para el responsable, con el bot de la plataforma como User-Agent:
+
+1. Arrancar la app con `SOURCE_ADAPTER=olympus` (`npm run dev`) y Postgres arriba.
+2. Desde un script Node suelto (o `node --input-type=module -e`), importar `olympus` de `src/sources/olympus.ts` y ejecutar, espaciadas a mano:
+   - `await olympus.search("")` → primera página del Catálogo (~15 Series) y `nextCursor`.
+   - `await olympus.search("academia")` → resultados filtrados en local; repetir otra query y confirmar que no hay una segunda petición a `/api/series/list` (log de red o proxy).
+   - `await olympus.getSeries(<externalId de un resultado>)` → título, sinopsis, estado y géneros.
+   - `await olympus.listRecentChapters(<externalId>)` → 40 Capítulos, más nuevos primero.
+   - `await olympus.getChapterPages(<externalId>, <externalId del primer Capítulo>)` → URLs de `media.imagesolymp.xyz` en orden.
+3. Anotar fecha/hora UTC, status de cada paso y si hubo 302 al host trampa / 403 / 429 (el adapter reintenta solo; registrar cuántas veces).
+4. Pegar el resultado como comentario en #20 y marcar la casilla del smoke.
