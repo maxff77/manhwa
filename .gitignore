@@ -3,6 +3,9 @@
 
 # machine-local tool consent/state
 /.impeccable/config.local.json
+
+# git worktrees de agentes: ramas propias registradas en git, no archivos de este árbol
+/.claude/worktrees/
 # heroui-agents-md
 .heroui-docs/
 
