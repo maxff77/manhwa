@@ -224,14 +224,14 @@ export class FakeSourceAdapter implements SourceAdapter {
 
 Tests contra fixtures; sin red y sin DB. La suite compartida vive en `tests/contract/` y corre con `npm run test:contract`, sin app ni Postgres. La política HTTP para los adapters reales está en `src/sources/http.ts`; ningún adapter real la consume todavía y la ejercen los tests de contrato.
 
-- [ ] `search`: query con resultados, query vacía (catálogo), cursor con más páginas y cursor final.
-- [ ] `getSeries`: todos los campos, campos opcionales ausentes, `externalId` inexistente → `NOT_FOUND`.
-- [ ] `listChapters`: orden de la Fuente, número duplicado se devuelve tal cual, número no parseable → `null`.
-- [ ] `listRecentChapters`: más recientes primero, cursor con más páginas y cursor final, página vacía.
-- [ ] `getChapterPages`: orden y `position` 0-based, capítulo vacío, listado de imágenes ausente → `PARSE`.
-- [ ] HTTP: 302 al host trampa seguido de 200 → el reintento tiene éxito; 403 persistente → `BLOCKED`; 429 agotado → `RATE_LIMITED`; 5xx agotado → `UPSTREAM`; HTML roto → `PARSE`.
-- [ ] Nunca se devuelve una lista parcial: un error en mitad del parseo lanza.
-- [ ] El `FakeSourceAdapter` pasa la misma suite que cualquier adapter real.
+- [x] `search`: query con resultados, query vacía (catálogo), cursor con más páginas y cursor final.
+- [x] `getSeries`: todos los campos, campos opcionales ausentes, `externalId` inexistente → `NOT_FOUND`.
+- [x] `listChapters`: orden de la Fuente, número duplicado se devuelve tal cual, número no parseable → `null`.
+- [x] `listRecentChapters`: más recientes primero, cursor con más páginas y cursor final, página vacía.
+- [x] `getChapterPages`: orden y `position` 0-based, capítulo vacío, listado de imágenes ausente → `PARSE`.
+- [x] HTTP: 302 al host trampa seguido de 200 → el reintento tiene éxito; 403 persistente → `BLOCKED`; 429 agotado → `RATE_LIMITED`; 5xx agotado → `UPSTREAM`; HTML roto → `PARSE`.
+- [x] Nunca se devuelve una lista parcial: un error en mitad del parseo lanza.
+- [x] El `FakeSourceAdapter` pasa la misma suite que cualquier adapter real.
 
 ## Mecanismo de Olympus
 
