@@ -15,7 +15,8 @@
     "db:up": "docker compose up -d --wait db",
     "db:migrate": "prisma migrate deploy",
     "test:e2e": "npm run build && playwright test",
-    "test:e2e:only": "playwright test"
+    "test:e2e:only": "playwright test",
+    "smoke:olympus": "playwright test --config playwright.smoke.config.ts"
   },
   "dependencies": {
     "@heroui/react": "3.2.7",

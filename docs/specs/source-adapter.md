@@ -251,14 +251,21 @@ La Búsqueda no tiene endpoint server-side (#14): query vacía pagina `/api/seri
 
 ### Smoke manual (lo ejecuta una persona)
 
-El agente no hace scraping de producción. Procedimiento para el responsable, con el bot de la plataforma como User-Agent:
+El agente no hace scraping de producción. El smoke vive en `tests/smoke/olympus.spec.ts` con su propia config (`playwright.smoke.config.ts`): **sin app ni Postgres**, pero con red real. Las suites de contrato y de la app lo excluyen (`testIgnore`), así que nunca corre en CI ni por accidente.
 
-1. Arrancar la app con `SOURCE_ADAPTER=olympus` (`npm run dev`) y Postgres arriba.
-2. Desde un script Node suelto (o `node --input-type=module -e`), importar `olympus` de `src/sources/olympus.ts` y ejecutar, espaciadas a mano:
-   - `await olympus.search("")` → primera página del Catálogo (~15 Series) y `nextCursor`.
-   - `await olympus.search("academia")` → resultados filtrados en local; repetir otra query y confirmar que no hay una segunda petición a `/api/series/list` (log de red o proxy).
-   - `await olympus.getSeries(<externalId de un resultado>)` → título, sinopsis, estado y géneros.
-   - `await olympus.listRecentChapters(<externalId>)` → 40 Capítulos, más nuevos primero.
-   - `await olympus.getChapterPages(<externalId>, <externalId del primer Capítulo>)` → URLs de `media.imagesolymp.xyz` en orden.
-3. Anotar fecha/hora UTC, status de cada paso y si hubo 302 al host trampa / 403 / 429 (el adapter reintenta solo; registrar cuántas veces).
-4. Pegar el resultado como comentario en #20 y marcar la casilla del smoke.
+```bash
+npm run smoke:olympus
+```
+
+Un solo test encadena las cinco operaciones contra Olympus, con el UA de bot propio y el espaciado del adapter, e imprime lo observado:
+
+1. `search("")` → primera página del Catálogo (~15 Series) y si hay `nextCursor`.
+2. `search("a")` → resultados del filtro local sobre `/api/series/list` (una sola petición; la segunda query reusa la caché).
+3. `getSeries(<externalId de la primera Serie>)` → título, estado, géneros y si hay sinopsis.
+4. `listRecentChapters(<externalId>)` → hasta 40 Capítulos, más nuevos primero.
+5. `getChapterPages(<externalId>, <primer Capítulo>)` → número de Páginas y primera URL (`media.imagesolymp.xyz`), con `position` 0.
+
+Al terminar:
+
+- Anotar fecha/hora UTC y si hubo 302 al host trampa / 403 / 429 (el adapter reintenta solo; los fallos agotados salen como `SourceError` con su `kind`).
+- Pegar la salida como comentario en #20 y marcar la casilla del smoke de arriba.

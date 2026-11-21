@@ -11,7 +11,9 @@ const BASE_URL = `http://127.0.0.1:${PORT}`;
 
 export default defineConfig({
   testDir: "./tests",
-  testIgnore: "**/contract/**",
+  // El smoke contra Olympus (tests/smoke) usa red real y lo corre una persona:
+  // nunca entra en la suite de la app ni en CI.
+  testIgnore: ["**/contract/**", "**/smoke/**"],
   fullyParallel: false,
   workers: 1,
   retries: 0,
