@@ -141,7 +141,7 @@ function toSummary(item: OlympusSeries): SourceSeriesSummary {
   };
 }
 
-/** Un ítem del listado debe ser un objeto con la forma de Serie; si no, PARSE. */
+/** Un ítem del Catálogo debe ser un objeto con la forma de Serie; si no, PARSE. */
 function toSeriesItem(value: unknown): SourceSeriesSummary {
   if (!isRecord(value)) {
     throw new TypeError("Ítem de catálogo inesperado de Olympus");
@@ -224,7 +224,7 @@ export class OlympusSourceAdapter implements SourceAdapter {
     return parseSourceBody(response, (body) => JSON.parse(body));
   }
 
-  /** `/api/series/list` cacheado 10 min, solo cómics; un fallo lanza, nunca []. */
+  /** `/api/series/list` cacheado 10 min, solo Series (`type === "comic"`); un fallo lanza, nunca []. */
   private async catalog(): Promise<OlympusSeries[]> {
     if (this.catalogCache && Date.now() - this.catalogCache.at < CATALOG_TTL_MS) {
       return this.catalogCache.items;

@@ -115,7 +115,7 @@ function chaptersPayload(
   };
 }
 
-/** HTML de capítulo con las imágenes en orden, más un logo fuera del strip que no es Página. */
+/** HTML de Capítulo con sus Páginas en orden, más un logo fuera del strip que no es Página. */
 function chapterHtml(images: string[]): string {
   const imgs = images.map((src) => `<div class="panel"><img src="${src}" /></div>`).join("\n");
 
@@ -135,7 +135,7 @@ const chapterPagesHtml: Record<string, string> = {
     `${MEDIA}/academia/1/1_02.webp`,
   ]),
   [`${ACADEMIA_PATH}/capitulo/extra`]: chapterHtml([]),
-  // Sin strip de imágenes: el adapter debe lanzar PARSE, no devolver [].
+  // Sin strip de Páginas: el adapter debe lanzar PARSE, no devolver [].
   [`${ACADEMIA_PATH}/capitulo/3`]:
     "<!doctype html><html><body><main><p>Capítulo no disponible.</p></main></body></html>",
 };
@@ -163,7 +163,7 @@ export function olympusResponses(): Map<string, unknown> {
     chaptersPayload([...academiaChapters].reverse(), 1, 1, 4),
   );
 
-  // Serie sin Capítulos: el listado responde 200 con una página vacía.
+  // Serie sin Capítulos: la API responde 200 con una página vacía.
   // Una Serie que no existe responde 404 y eso es NOT_FOUND, no una página vacía.
   const empty = { data: [], meta: { current_page: 1, last_page: 1, per_page: 40, total: 0 } };
   responses.set("/api/series/sin-capitulos/chapters?page=1&direction=asc&type=comic", empty);
@@ -181,6 +181,22 @@ export function olympusResponses(): Map<string, unknown> {
 
   return responses;
 }
+
+/** Identidades externas de las fixtures: un solo sitio donde viven los slugs. */
+export const olympusIds = {
+  academia: `comic-${academia.slug}`,
+  larga: `comic-${larga.slug}`,
+};
+
+/** Slug de la página 2 de Capítulos de la Serie larga, para mutar esa fixture. */
+export const largaChaptersPage2Path = `/api/series/${larga.slug}/chapters?page=2&direction=asc&type=comic`;
+
+/** Respuesta con un status dado, sin cuerpo. */
+export const statusReply = (code: number) => () => new Response(null, { status: code });
+
+/** 302 a un host trampa: el bloqueo medido en #12. */
+export const trapReplyTo = (host: string) => () =>
+  new Response(null, { status: 302, headers: { location: `https://${host}/bloqueo` } });
 
 /** URLs absolutas de las fixtures, para afirmar qué se pidió y qué no. */
 export const olympusUrls = {

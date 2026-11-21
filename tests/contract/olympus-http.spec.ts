@@ -6,13 +6,15 @@ import { expectSourceError } from "./suite";
 import {
   OLYMPUS_TRAP_HOST,
   fixtureTransport,
+  largaChaptersPage2Path,
+  olympusIds,
   olympusResponses,
   olympusUrls,
+  statusReply,
+  trapReplyTo,
 } from "./support/olympus-fixtures";
 
-const status = (code: number) => () => new Response(null, { status: code });
-const trap = () =>
-  new Response(null, { status: 302, headers: { location: `https://${OLYMPUS_TRAP_HOST}/bloqueo` } });
+const trap = trapReplyTo(OLYMPUS_TRAP_HOST);
 
 function setup() {
   const transport = fixtureTransport(olympusResponses());
@@ -92,9 +94,9 @@ test("la Búsqueda pagina en local de 20 en 20 con cursor por offset", async () 
 
 test("un fallo del catálogo lanza y nunca devuelve una lista vacía", async () => {
   const { transport, adapter } = setup();
-  transport.queueReply(olympusUrls.catalogList, status(503));
-  transport.queueReply(olympusUrls.catalogList, status(503));
-  transport.queueReply(olympusUrls.catalogList, status(503));
+  transport.queueReply(olympusUrls.catalogList, statusReply(503));
+  transport.queueReply(olympusUrls.catalogList, statusReply(503));
+  transport.queueReply(olympusUrls.catalogList, statusReply(503));
 
   await expectSourceError(adapter.search("academia"), "UPSTREAM");
 });
@@ -111,10 +113,10 @@ test("un 302 al host trampa seguido de 200 se reintenta y el adapter responde", 
 
 test("403 persistente lanza BLOCKED tras 3 intentos", async () => {
   const { transport, adapter } = setup();
-  for (let i = 0; i < 3; i++) transport.queueReply(olympusUrls.academiaDetail, status(403));
+  for (let i = 0; i < 3; i++) transport.queueReply(olympusUrls.academiaDetail, statusReply(403));
 
   await expectSourceError(
-    adapter.getSeries("comic-academia-de-la-ascension-20261114-080134843"),
+    adapter.getSeries(olympusIds.academia),
     "BLOCKED",
   );
   expect(transport.calls.filter((url) => url === olympusUrls.academiaDetail)).toHaveLength(3);
@@ -122,20 +124,20 @@ test("403 persistente lanza BLOCKED tras 3 intentos", async () => {
 
 test("429 agotado lanza RATE_LIMITED", async () => {
   const { transport, adapter } = setup();
-  for (let i = 0; i < 3; i++) transport.queueReply(olympusUrls.academiaDetail, status(429));
+  for (let i = 0; i < 3; i++) transport.queueReply(olympusUrls.academiaDetail, statusReply(429));
 
   await expectSourceError(
-    adapter.getSeries("comic-academia-de-la-ascension-20261114-080134843"),
+    adapter.getSeries(olympusIds.academia),
     "RATE_LIMITED",
   );
 });
 
 test("5xx agotado lanza UPSTREAM", async () => {
   const { transport, adapter } = setup();
-  for (let i = 0; i < 3; i++) transport.queueReply(olympusUrls.academiaDetail, status(503));
+  for (let i = 0; i < 3; i++) transport.queueReply(olympusUrls.academiaDetail, statusReply(503));
 
   await expectSourceError(
-    adapter.getSeries("comic-academia-de-la-ascension-20261114-080134843"),
+    adapter.getSeries(olympusIds.academia),
     "UPSTREAM",
   );
 });
@@ -145,7 +147,7 @@ test("el bloqueo también se reintenta al pedir Páginas de un Capítulo", async
   transport.queueReply(olympusUrls.academiaChapter1, trap);
 
   const pages = await adapter.getChapterPages(
-    "comic-academia-de-la-ascension-20261114-080134843",
+    olympusIds.academia,
     "1",
   );
 
@@ -154,8 +156,7 @@ test("el bloqueo también se reintenta al pedir Páginas de un Capítulo", async
 
 test("una lista de Capítulos incompleta lanza PARSE, nunca una lista parcial", async () => {
   const responses = olympusResponses();
-  const key =
-    "/api/series/la-serie-larga-20261114-080400000/chapters?page=2&direction=asc&type=comic";
+  const key = largaChaptersPage2Path;
   const page2 = responses.get(key) as { data: unknown[]; meta: Record<string, number> };
   // La página 2 anuncia 45 en total pero entrega solo 3 de los 5 que faltan.
   responses.set(key, {
@@ -165,7 +166,7 @@ test("una lista de Capítulos incompleta lanza PARSE, nunca una lista parcial", 
 
   const adapter = new OlympusSourceAdapter(fixtureTransport(responses).http);
 
-  await expectSourceError(adapter.listChapters("comic-la-serie-larga-20261114-080400000"), "PARSE");
+  await expectSourceError(adapter.listChapters(olympusIds.larga), "PARSE");
 });
 
 test("un JSON roto en el catálogo lanza PARSE", async () => {

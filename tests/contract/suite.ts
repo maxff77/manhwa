@@ -19,6 +19,8 @@ const chapter = (n: number) => ({
   url: `/series/larga/capitulo/capitulo-${n}`,
 });
 
+/** Identidad de la Serie sin Capítulos usada en el contrato; cada adapter la resuelve a su manera. */
+const EMPTY_SERIES_ID = "sin-capitulos";
 
 /** Fixtures canónicas del contrato: cualquier adapter real debe servir estos mismos datos. */
 export const contractFixtures: FakeFixtures = {
@@ -112,10 +114,17 @@ export const contractFixtures: FakeFixtures = {
  * adapter real construido sobre estas mismas fixtures. Sin red y sin DB.
  *
  * La identidad externa es propia de cada Fuente (el fake usa slugs cortos,
- * Olympus los suyos con prefijo de tipo), así que la suite afirma títulos,
- * números y orden —los datos del contrato— y nunca literales de identidad.
+ * Olympus los suyos con prefijo de tipo), así que la suite deriva las
+ * identidades de `search()` y afirma títulos, números y orden: los datos del
+ * contrato. Las dos excepciones son casos negativos fijos (`EMPTY_SERIES_ID`
+ * para una Serie sin Capítulos y un id inexistente para NOT_FOUND).
  */
-export function sourceAdapterContract(name: string, createAdapter: () => SourceAdapter) {
+export function sourceAdapterContract(
+  name: string,
+  createAdapter: () => SourceAdapter,
+  /** La Fuente expone autores y año en el detalle. Olympus no (#20); el fake sí. */
+  expectedDetailFields = true,
+) {
   test.describe(name, () => {
     test("search con query vacía recorre el Catálogo y pagina hasta el cursor final", async () => {
       const adapter = createAdapter();
@@ -172,8 +181,15 @@ export function sourceAdapterContract(name: string, createAdapter: () => SourceA
       if (summary.status !== undefined) {
         expect(detail.status).toBe(summary.status);
       }
-      expect(Array.isArray(detail.authors)).toBe(true);
-      expect(detail.year === undefined || typeof detail.year === "number").toBe(true);
+      // Autores y año: la fixture los declara, así que el adapter debe devolverlos.
+      // Olympus no los expone y su spec lo registra como desviación (#20).
+      if (expectedDetailFields) {
+        expect(detail.authors).toEqual(["Autora Uno"]);
+        expect(detail.year).toBe(2024);
+      } else {
+        expect(detail.authors).toEqual([]);
+        expect(detail.year).toBeUndefined();
+      }
     });
 
     test("getSeries admite los campos opcionales ausentes", async () => {
@@ -243,7 +259,7 @@ export function sourceAdapterContract(name: string, createAdapter: () => SourceA
     test("listRecentChapters admite una Serie sin Capítulos como página vacía", async () => {
       // Una Serie que existe y no tiene Capítulos es una página vacía; una que
       // no existe es NOT_FOUND (lo cubre getSeries).
-      const page = await createAdapter().listRecentChapters("sin-capitulos");
+      const page = await createAdapter().listRecentChapters(EMPTY_SERIES_ID);
 
       expect(page.items).toEqual([]);
       expect(page.nextCursor).toBeUndefined();

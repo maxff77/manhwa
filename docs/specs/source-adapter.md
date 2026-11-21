@@ -238,7 +238,7 @@ Tests contra fixtures; sin red y sin DB. La suite compartida vive en `tests/cont
 - [x] `search` recorre el Catálogo paginado (`/api/series?page=N`) y filtra localmente por título normalizado sobre `/api/series/list` cacheado; sin red en los tests.
 - [x] `getSeries` mapea título, sinopsis, estado y géneros desde `/api/series/<slug>?type=comic`. Autores y año: Olympus no los expone; quedan vacíos hasta una Fuente de metadata (spec v1).
 - [x] `listChapters` usa el JSON paginado de 40 por página (`direction=asc`) y exige el `meta.total` anunciado; `listRecentChapters` pide `direction=desc`.
-- [x] `getChapterPages` parsea las URLs de imagen del HTML (`main.strip img`) en orden 0-based.
+- [x] `getChapterPages` parsea las URLs de las Páginas del HTML (`main.strip img`) en orden 0-based.
 - [x] El adapter real pasa la misma suite de contrato que el fake, con fixtures (`tests/contract/olympus-source-adapter.spec.ts`).
 - [x] Los 302 al host trampa, 403, 429 y 5xx se reintentan y, al agotarse, lanzan el `kind` correcto (`tests/contract/olympus-http.spec.ts`).
 - [ ] Smoke manual contra Olympus ejecutado por una persona (procedimiento abajo); el agente no rastrea producción.
