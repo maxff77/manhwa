@@ -3,13 +3,15 @@ title: "La ingesta del Catalogo se fusiono en main local sin publicar, y se veri
 author: Richard
 date: 2026-11-22
 branch: main
-cost: { minutes: 104, tokens: 16949831 }
+cost: { minutes: 105, tokens: 16949831 }
 id: l-7c0bc91a
 scope: repo
 status: active
 src: agent
 touches:
   - package.json
+  - playwright.config.ts
+  - playwright.ingest.config.ts
 ---
 
 ## Decided
@@ -19,6 +21,8 @@ touches:
 - Marcar las casillas de un ticket solo con evidencia ejecutada, y reescribir la que no se cumple literal en vez de marcarla en falso: el criterio de titulo original normalizado quedo declarado como desviacion porque el contrato del adaptador nunca expuso ese campo.
 - Un ticket de ingesta no se cierra porque el codigo pase sus suites: el criterio de datos reales se comprueba consultando la base. Con cero Series, el issue queda abierto y pasa a espera de una persona.
 - El siguiente ticket se elige por los bloqueos nativos del tracker (dependencias abiertas = 0), no por el numero ni por el orden del mapa. Consultados los hijos abiertos, solo el de cuentas esta libre; toda la rama de catalogo sigue bloqueada por la ingesta.
+- Cada arnes apunta a una base distinta porque los configs de Playwright sobrescriben DATABASE_URL con la de test, mientras el job real lee la del .env (desarrollo). Por eso las suites verdes no dejaban el esquema al dia en la base destino: `prisma migrate status` sobre la de desarrollo fallo con "Following migration have not yet been applied: 20261122000000_chapter_identity_per_series". Hubo que correr `prisma migrate deploy` tambien alli.
+- Antes de entregar un comando de ingesta a una persona, comprobar `prisma migrate status` sobre la base que ESE comando usa, porque un indice unico viejo en la base destino reintroduce el descarte silencioso de Capitulos que la migracion corrigio: sin ella solo la primera Serie conservaba sus Capitulos.
 
 ## Tried and ruled out
 - Push + Pull Request: el responsable eligio merge local; publicar es decision suya y sigue pendiente.
@@ -27,6 +31,7 @@ touches:
 - Cerrar el ticket al pasar las suites: la base tenia una Fuente y cero Series, asi que el resultado que el ticket promete no existia.
 - Marcar la casilla del titulo original tal como estaba redactada: afirmaba algo que el codigo no hace.
 - Arrancar el ticket de catalogo por ser el siguiente en numero: su unico bloqueo abierto es la ingesta.
+- Confiar en que las suites verdes implican esquema al dia en todas las bases: descartado porque el global-setup migra solo la base de test (los configs fijan DATABASE_URL), y la de desarrollo seguia una migracion atras tras pasar ingest 16 / contrato 65 / e2e 5.
 
 ## Watch out
 - Tras un merge que toca package.json hay que `npm install` en el checkout principal: tsx faltaba alli aunque la rama lo tenia instalado. Sin eso `npm run catalog:backfill` falla por binario ausente.
@@ -46,3 +51,9 @@ In the code:
 - `gh api repos/<owner>/<repo>/issues/<n> --jq .issue_dependencies_summary.blocked_by` para la frontera; `.../dependencies/blocking` para que desbloquea.
 - Conteo real con un probe dentro del repo (dotenv resuelve desde node_modules del proyecto): sources=1, series=0, chapters=0.
 - Suites sobre el arbol fusionado: test:ingest 16, test:contract 65, test:e2e 5, typecheck limpio.
+- Verificar el indice resultante consultando pg_indexes en la base destino, no solo el estado de migraciones, porque es la unica prueba de que la clave global vieja ya no existe.
+
+- playwright.config.ts:7 y playwright.ingest.config.ts:6 fijan DATABASE_URL a la base de test; .env.example:2 apunta a la de desarrollo.
+- `npx prisma migrate deploy` sobre la base de desarrollo aplico 20261122000000_chapter_identity_per_series; despues `prisma migrate status` -> Database schema is up to date.
+- pg_indexes en chapters: chapters_seriesId_sourceId_externalId_key y chapters_seriesId_sourceId_number_key; la clave global vieja ausente.
+- Job re-corrido con adaptador falso sobre la base ya migrada: exit 0, sources=1 series=0 chapters=0, 0 advisory locks.
