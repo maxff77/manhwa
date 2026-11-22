@@ -41,6 +41,14 @@ test("con el lock tomado, el segundo proceso sale 0 sin tocar la DB", async () =
   }
 });
 
+test("dos corridas secuenciales no se bloquean: el lock se libera al terminar", async () => {
+  // El advisory lock es de sesión. Si el pool del job tiene más de una
+  // conexión, el unlock cae en otra y el lock queda vivo para siempre.
+  await run("npm", ["run", "catalog:backfill"], { env });
+  const segunda = await run("npm", ["run", "catalog:backfill"], { env });
+  expect(events(segunda.stdout).at(-1)).toMatchObject({ event: "done" });
+});
+
 test("sin SOURCE_ADAPTER el entrypoint sale 1 con log fatal", async () => {
   let failure: { code?: number; stdout?: string } | undefined;
   try {
