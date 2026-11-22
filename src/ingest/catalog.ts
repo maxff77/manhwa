@@ -1,4 +1,9 @@
-import type { PrismaClient, Source, SeriesStatus } from "../generated/prisma/client";
+import type {
+  Prisma,
+  PrismaClient,
+  Source,
+  SeriesStatus,
+} from "../generated/prisma/client";
 import { normalizeTitle } from "../lib/normalize";
 import {
   SourceError,
@@ -39,7 +44,7 @@ export function slugify(title: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
-async function freeSlug(db: PrismaClient, title: string): Promise<string> {
+async function freeSlug(db: Prisma.TransactionClient, title: string): Promise<string> {
   const base = slugify(title) || "serie";
   // ponytail: check-then-insert; el advisory lock del job serializa las pasadas.
   // Si entra otro escritor, la constraint unique de `slug` lo detecta y hay que reintentar.
@@ -116,7 +121,7 @@ export async function ingestSeries(
       const created = await tx.series.create({
         data: {
           ...data,
-          slug: await freeSlug(tx as PrismaClient, detail.title),
+          slug: await freeSlug(tx, detail.title),
           status: data.status ?? "ONGOING",
         },
         select: { id: true },
