@@ -167,6 +167,57 @@ test("dos Series con el mismo título reciben slugs distintos y conservan su ide
   expect(vinculos.map((v) => v.externalId)).toEqual(["a", "b"]);
 });
 
+test("un corte tras crear la Serie deja todo o nada: sin Serie huérfana que ocupe el slug", async () => {
+  const f = fixtures();
+  const { deps: base } = deps(f);
+  const sourceRow = await ensureSource(prisma, "fake");
+
+  // Simula un corte entre series.create y la creación del vínculo: la DB
+  // rechaza el INSERT de SeriesSource. La Serie creada no debe sobrevivir.
+  const roto: IngestDeps = {
+    ...base,
+    db: new Proxy(base.db, {
+      get(target, prop) {
+        if (prop === "$transaction") {
+          return async (fn: (tx: unknown) => Promise<unknown>) =>
+            (
+              target.$transaction as unknown as (
+                cb: (tx: unknown) => Promise<unknown>,
+              ) => Promise<unknown>
+            )(async (tx) => {
+              const txRoto = new Proxy(tx as object, {
+                get(t, p) {
+                  if (p === "seriesSource") {
+                    return {
+                      create: () => Promise.reject(new Error("corte simulado")),
+                      update: () => Promise.reject(new Error("corte simulado")),
+                    };
+                  }
+                  return Reflect.get(t, p);
+                },
+              });
+              return fn(txRoto);
+            });
+        }
+        return Reflect.get(target, prop);
+      },
+    }) as typeof prisma,
+  };
+
+  await expect(ingestSeries(roto, sourceRow, academia)).rejects.toThrow("corte simulado");
+  // La Serie no debe quedar creada sin vínculo: ocuparía el slug para siempre.
+  expect(await prisma.series.count()).toBe(0);
+  expect(await prisma.seriesSource.count()).toBe(0);
+  expect(await prisma.chapter.count()).toBe(0);
+
+  // Reanudar con datos sanos crea la Serie con el slug limpio, sin sufijo.
+  const { deps: sano } = deps();
+  const { seriesId, created } = await ingestSeries(sano, sourceRow, academia);
+  expect(created).toBe(true);
+  const serie = await prisma.series.findUniqueOrThrow({ where: { id: seriesId } });
+  expect(serie.slug).toBe("academia-de-la-ascension");
+});
+
 test("Capítulos con number null se omiten con log y los números repetidos no rompen la pasada", async () => {
   const f = fixtures();
   f.chapters.academia = [

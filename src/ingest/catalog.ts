@@ -104,23 +104,27 @@ export async function ingestSeries(
   const recent = await source.listRecentChapters(summary.externalId);
   const data = detailData(detail, summary);
 
-  const seriesId = link
-    ? link.seriesId
-    : (
-        await db.series.create({
-          data: { ...data, slug: await freeSlug(db, detail.title), status: data.status ?? "ONGOING" },
-          select: { id: true },
-        })
-      ).id;
-
-  await db.$transaction(async (tx) => {
+  // Serie + vínculo + Capítulos en una sola transacción: un corte no puede
+  // dejar una Serie sin SeriesSource ocupando el slug para siempre (#21).
+  const seriesId = await db.$transaction(async (tx) => {
+    let id: string;
     if (link) {
-      await tx.series.update({ where: { id: seriesId }, data });
+      id = link.seriesId;
+      await tx.series.update({ where: { id }, data });
       await tx.seriesSource.update({ where: { id: link.id }, data: { url: detail.url } });
     } else {
+      const created = await tx.series.create({
+        data: {
+          ...data,
+          slug: await freeSlug(tx as PrismaClient, detail.title),
+          status: data.status ?? "ONGOING",
+        },
+        select: { id: true },
+      });
+      id = created.id;
       await tx.seriesSource.create({
         data: {
-          seriesId,
+          seriesId: id,
           sourceId: sourceRow.id,
           externalId: summary.externalId,
           url: detail.url,
@@ -140,28 +144,28 @@ export async function ingestSeries(
       }
       return true;
     });
-    if (valid.length === 0) {
-      return;
-    }
-    const inserted = await tx.chapter.createMany({
-      data: valid.map((chapter) => ({
-        seriesId,
-        sourceId: sourceRow.id,
-        externalId: chapter.externalId,
-        number: chapter.number as number,
-        title: chapter.title ?? null,
-        publishedAt: chapter.publishedAt ?? null,
-      })),
-      skipDuplicates: true,
-    });
-    if (inserted.count < valid.length) {
-      log({
-        event: "chapter-duplicate",
-        seriesExternalId: summary.externalId,
-        expected: valid.length,
-        inserted: inserted.count,
+    if (valid.length > 0) {
+      const inserted = await tx.chapter.createMany({
+        data: valid.map((chapter) => ({
+          seriesId: id,
+          sourceId: sourceRow.id,
+          externalId: chapter.externalId,
+          number: chapter.number as number,
+          title: chapter.title ?? null,
+          publishedAt: chapter.publishedAt ?? null,
+        })),
+        skipDuplicates: true,
       });
+      if (inserted.count < valid.length) {
+        log({
+          event: "chapter-duplicate",
+          seriesExternalId: summary.externalId,
+          expected: valid.length,
+          inserted: inserted.count,
+        });
+      }
     }
+    return id;
   });
 
   return { seriesId, created: !link };
