@@ -87,6 +87,61 @@ Mismo endpoint que la búsqueda. Parámetros:
 
 `sort=latest` exige que la ingesta conozca la fecha del último Capítulo de cada Serie. El primer vertical slice debe recorrer el listado de Capítulos de todas las Series ingestadas (basta la primera página con `direction=desc` por Serie) además del catálogo. Sin eso, `latestChapter` es `null` en todas y `sort=latest` degrada a `title`.
 
+### Backfill y refresco diario (#21)
+
+Un solo comando sirve para la carga inicial y para el refresco diario:
+
+```bash
+npm run catalog:backfill   # tsx scripts/backfill-catalog.ts
+```
+
+- Recorre `search("")` página a página y hace upsert de `Source`, `Series` y `SeriesSource`. La identidad de la Fuente vive en `SeriesSource (sourceId, externalId)`; el slug interno se asigna solo al crear y no cambia aunque cambie el título.
+- **Serie nueva o sin Capítulos**: pide `getSeries` (sinopsis, géneros, autores, año, estado) y la primera página de `listRecentChapters`. No marca `chaptersSyncedAt`: eso es de la sincronización al visitar la Serie.
+- **Serie existente con Capítulos**: actualiza título, portada y estado desde el resumen del listado; no vuelve a pedir detalle ni Capítulos.
+- Un fallo del adapter en una Serie se registra y se sigue con las demás; un fallo del listado corta la pasada. Nada persistido se borra. Reejecutar reanuda: lo ya completo se salta sin peticiones extra.
+- El proceso toma `pg_try_advisory_lock(hashtext('manhwa:catalog-backfill'))`; si otro lo tiene, sale 0 con `lock-busy`. Logs JSON a stdout (`page`, `series-created`, `series-failed`, `chapter-skipped`, `chapter-duplicate`, `catalog-failed`, `done`, `fatal`). Sale 1 si hubo fallos o excepción.
+- La Fuente la elige `SOURCE_ADAPTER` vía composition root; sin valor el script falla, nunca cae en `fake`.
+
+La corrida contra Olympus la ejecuta una persona o el timer, no el agente (mismo criterio que el smoke de #20):
+
+```bash
+SOURCE_ADAPTER=olympus npm run catalog:backfill
+```
+
+Son ~60 páginas de catálogo más dos peticiones por Serie nueva (~890 Series): unas 1.840 peticiones espaciadas 500 ms, del orden de 20–30 min. Si el anti-bot corta la pasada, se relanza el mismo comando.
+
+### Unidades systemd
+
+```ini
+# /etc/systemd/system/manhwa-catalog.service
+[Unit]
+Description=Manhwa catalog daily refresh
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/srv/manhwa
+ExecStart=/usr/bin/npm run catalog:backfill
+Environment=SOURCE_ADAPTER=olympus
+```
+
+```ini
+# /etc/systemd/system/manhwa-catalog.timer
+[Unit]
+Description=Run Manhwa catalog refresh daily
+
+[Timer]
+OnCalendar=daily
+RandomizedDelaySec=15min
+Persistent=true
+Unit=manhwa-catalog.service
+
+[Install]
+WantedBy=timers.target
+```
+
+`Persistent=true` recupera la pasada perdida si el VPS estaba apagado a la hora programada. No hay scheduler dentro de la app.
+
 ## Fuera de alcance
 
 - **Filtros** por tipo, demografía, año, autores y erótico: campos vacíos en v1; dependen de MangaDex u otra metadata.
