@@ -1,5 +1,6 @@
 import "dotenv/config";
-import { createComposition } from "../src/composition";
+import { createJobClient } from "../src/lib/db";
+import { getSourceAdapter } from "../src/sources/registry";
 import { backfillCatalog } from "../src/ingest/catalog";
 
 /**
@@ -13,7 +14,10 @@ const log = (event: Record<string, unknown>) =>
   console.log(JSON.stringify({ ts: new Date().toISOString(), ...event }));
 
 async function main(): Promise<number> {
-  const { db, source } = createComposition();
+  // Cliente de job: una conexión sin eviction, para que el advisory lock de
+  // sesión sobreviva los silencios de DB durante un stall del adapter.
+  const db = createJobClient();
+  const source = getSourceAdapter();
   try {
     const [{ locked }] = await db.$queryRaw<Array<{ locked: boolean }>>`
       SELECT pg_try_advisory_lock(hashtext('manhwa:catalog-backfill')) AS locked
