@@ -167,7 +167,61 @@ export async function ingestSeries(
   return { seriesId, created: !link };
 }
 
-/** Un fallo del adapter nunca borra filas: aquí solo se escribe (v1.md). */
-export function isSourceError(error: unknown): error is SourceError {
-  return error instanceof SourceError;
+/**
+ * Recorre el Catálogo completo de la Fuente y hace upsert de cada Serie.
+ *
+ * Reanudable por construcción: la identidad vive en `SeriesSource`, así que
+ * reejecutar salta lo ya ingerido sin volver a pedir detalle. Un fallo en una
+ * Serie se registra y se sigue; un fallo del listado corta el recorrido (sin
+ * listado no hay nada que recorrer) y lo persistido queda intacto.
+ */
+export async function backfillCatalog(
+  deps: IngestDeps,
+): Promise<{ pages: number; processed: number; failed: number }> {
+  const { db, source, log } = deps;
+  const sourceRow = await ensureSource(db, source.slug);
+  let cursor: string | undefined;
+  let pages = 0;
+  let processed = 0;
+  let failed = 0;
+
+  do {
+    let page;
+    try {
+      page = await source.search("", cursor);
+    } catch (error) {
+      if (!(error instanceof SourceError)) throw error;
+      log({ event: "catalog-failed", kind: error.kind, message: error.message });
+      throw error;
+    }
+    pages++;
+    log({ event: "page", page: pages, items: page.items.length });
+
+    for (const summary of page.items) {
+      try {
+        const { seriesId, created } = await ingestSeries(deps, sourceRow, summary);
+        processed++;
+        if (created) {
+          const serie = await db.series.findUniqueOrThrow({
+            where: { id: seriesId },
+            select: { slug: true },
+          });
+          log({ event: "series-created", externalId: summary.externalId, slug: serie.slug });
+        }
+      } catch (error) {
+        // Solo fallos de la Fuente: cualquier otro error es un bug y se propaga.
+        if (!(error instanceof SourceError)) throw error;
+        failed++;
+        log({
+          event: "series-failed",
+          externalId: summary.externalId,
+          kind: error.kind,
+          message: error.message,
+        });
+      }
+    }
+    cursor = page.nextCursor;
+  } while (cursor !== undefined);
+
+  return { pages, processed, failed };
 }

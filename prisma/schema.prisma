@@ -139,7 +139,9 @@ model Chapter {
   progress Progress[]
   comments Comment[]
 
-  @@unique([sourceId, externalId])
+  // El segmento de URL se repite entre Series ("1", "2"…): la identidad es
+  // por Serie y Fuente, no global de la Fuente (docs/specs/source-adapter.md).
+  @@unique([seriesId, sourceId, externalId])
   @@unique([seriesId, sourceId, number])
   @@index([seriesId, number])
   @@map("chapters")
