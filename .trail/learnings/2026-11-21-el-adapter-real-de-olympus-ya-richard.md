@@ -3,7 +3,7 @@ title: "El adapter real de Olympus ya existe: el mecanismo se verificó y la sui
 author: Richard
 date: 2026-11-21
 branch: main
-cost: { minutes: 150, tokens: 43325751 }
+cost: { minutes: 191, tokens: 45518512 }
 id: l-441dc5bb
 scope: repo
 status: active
@@ -33,6 +33,8 @@ touches:
 - `getChapterPages` pide `/api/capitulo/<slug>/<segmento>?type=comic` y lee `chapter.pages` (array de URLs) en orden 0-based. El smoke contra producción del #20 lo probó: las cuatro operaciones JSON respondieron y el HTML del lector devolvió 302 al host trampa hasta agotar los tres reintentos (`SourceError BLOCKED`).
 - Esto sustituye la recomendación de #13, que dejaba este paso como HTML (`main.strip img`). El contrato lo permite explícitamente: «El mecanismo de obtención (HTML, JSON o JS) es interno al adapter; el pipeline no lo conoce». Ninguna firma, DTO ni test de contrato cambió de forma: solo el transporte y las fixtures.
 - Las URLs relativas se resuelven contra la URL pedida con `new URL(...)`, así un payload con rutas relativas sigue dando URLs absolutas.
+- El timeout por defecto del transporte de Fuentes pasa de 15 s a 30 s. El segundo smoke del #20 abortó `GET /api/series/list` con `TimeoutError` a los 15 s, mientras la primera página del catálogo respondió en el mismo run: el endpoint del catálogo completo es más lento que uno paginado y comparte plazo con él.
+- El plazo se afirma midiendo cuándo aborta la señal de verdad contra una referencia de 15 s creada en el mismo instante; `AbortSignal` no expone su plazo, así que cualquier otra comprobación sería tautológica. El test dura ~30 s y lleva `test.setTimeout(60_000)` a nivel de archivo.
 
 ## Tried and ruled out
 - Relajar autores/año a `Array.isArray` / `undefined-or-number` para que el adapter real pasara: debilitaba el contrato para ponerlo verde. Se revirtió en la revisión; cada Fuente afirma lo que expone.
@@ -42,6 +44,8 @@ touches:
 - Importar el adapter `.ts` desde un script Node suelto: Node 24 falla con `ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX` (parameter properties en strip-only mode). Se usa Playwright, que ya era devDependency: cero dependencias nuevas.
 - Mantener el parseo del HTML del lector con el UA de bot propio: el anti-bot lo bloquea (medido en el smoke). Cambiar a UA de navegador está prohibido por la política HTTP del spec («nunca UA de navegador ni de crawler de IA»), así que no era una salida.
 - Reintentar más veces o subir el delay para el HTML: el bloqueo no es rate limiting, es el 302 al host trampa; más intentos solo alargan el fallo.
+- Reintentar el timeout dentro del adapter: el spec deja el reintento de un fallo de transporte al job, no al adapter (`sourceFetch` lanza UPSTREAM sin reintentar). Subir el plazo es lo que corresponde a un endpoint lento, no a un bloqueo.
+- Pasar el timeout como tercer argumento de `test(...)`: Playwright lo interpreta como `TestDetails` (TS2559) y el test sigue cortando a los 30 s por defecto. Va con `test.setTimeout`.
 
 ## Watch out
 - `trail check` marca 7 conflictos léxicos sobre el texto del spec (suite/app, adapter real, autores/año, `/api/series`, redirect 302, cursor, Chrome). Verificados uno por uno contra el código commiteado: la suite de contrato sigue fuera de la config de la app (`testIgnore: "**/contract/**"`), no hay cambios en `src/app`, no se envía ningún parámetro de texto a `/api/series`, y el seam de la app sigue corriendo en Chromium. La justificación va en ambos mensajes de commit.
@@ -67,3 +71,9 @@ In the code:
 - src/sources/olympus.ts (`getChapterPages`), tests/contract/support/olympus-fixtures.ts (`chapterPayload`, `chapterPagesJson`, `olympusUrls.academiaChapter1`)
 - docs/specs/source-adapter.md:241 y :250 (mecanismo JSON de las Páginas y por qué se supersede #13)
 - La casilla del smoke (docs/specs/source-adapter.md:244) sigue sin marcar: hay que repetir `npm run smoke:olympus` tras este cambio, y lo corre una persona.
+- Un `UPSTREAM` con `cause: TimeoutError` en una sola operación señala el plazo, no la política HTTP ni el anti-bot: se distingue de `BLOCKED` (302 al host trampa) leyendo el `cause`.
+- `/api/series/list` no está documentado y su tamaño no se midió; si crece, 30 s puede volver a quedarse corto. La alternativa real es paginar el catálogo, no subir el plazo indefinidamente.
+
+- src/sources/http.ts (`TIMEOUT_MS = 30_000`), tests/contract/http.spec.ts (test del plazo por defecto)
+- `npm run typecheck` limpio · `npm run test:contract` → 64 passed · `npm run test:e2e` → 5 passed
+- Commit f6b54ae en origin/main. La casilla del smoke (docs/specs/source-adapter.md:244) sigue sin marcar: hay que repetir `npm run smoke:olympus`, y lo corre una persona.
