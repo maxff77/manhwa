@@ -3,7 +3,7 @@ title: "El adapter real de Olympus ya existe: el mecanismo se verificó y la sui
 author: Richard
 date: 2026-11-21
 branch: main
-cost: { minutes: 191, tokens: 45518512 }
+cost: { minutes: 210, tokens: 47231525 }
 id: l-441dc5bb
 scope: repo
 status: active
@@ -35,6 +35,8 @@ touches:
 - Las URLs relativas se resuelven contra la URL pedida con `new URL(...)`, así un payload con rutas relativas sigue dando URLs absolutas.
 - El timeout por defecto del transporte de Fuentes pasa de 15 s a 30 s. El segundo smoke del #20 abortó `GET /api/series/list` con `TimeoutError` a los 15 s, mientras la primera página del catálogo respondió en el mismo run: el endpoint del catálogo completo es más lento que uno paginado y comparte plazo con él.
 - El plazo se afirma midiendo cuándo aborta la señal de verdad contra una referencia de 15 s creada en el mismo instante; `AbortSignal` no expone su plazo, así que cualquier otra comprobación sería tautológica. El test dura ~30 s y lleva `test.setTimeout(60_000)` a nivel de archivo.
+- La casilla del smoke se marca en el mismo commit que registra la salida literal (fecha UTC, commit probado, resultado y si hubo 302 al host trampa / 403 / 429), no antes. Un check sin evidencia no distingue «pasó» de «se marcó para cerrar». El registro vive en una sección propia del spec, junto a los fallos previos que motivaron cada fix.
+- El cierre del issue espera esa salida: dos smokes fallidos produjeron dos fixes reales (Páginas por JSON y timeout de 30 s) que ninguna suite de fixtures habría detectado. Cerrar con el smoke solo documentado habría dejado esos dos fallos en producción.
 
 ## Tried and ruled out
 - Relajar autores/año a `Array.isArray` / `undefined-or-number` para que el adapter real pasara: debilitaba el contrato para ponerlo verde. Se revirtió en la revisión; cada Fuente afirma lo que expone.
@@ -46,6 +48,7 @@ touches:
 - Reintentar más veces o subir el delay para el HTML: el bloqueo no es rate limiting, es el 302 al host trampa; más intentos solo alargan el fallo.
 - Reintentar el timeout dentro del adapter: el spec deja el reintento de un fallo de transporte al job, no al adapter (`sourceFetch` lanza UPSTREAM sin reintentar). Subir el plazo es lo que corresponde a un endpoint lento, no a un bloqueo.
 - Pasar el timeout como tercer argumento de `test(...)`: Playwright lo interpreta como `TestDetails` (TS2559) y el test sigue cortando a los 30 s por defecto. Va con `test.setTimeout`.
+- Marcar la casilla tras el primer smoke fallido «porque el fallo era del sitio»: el `kind` del error demostró que era del adapter (mecanismo HTML bloqueado, plazo corto). Cada fallo se arregló y se volvió a correr antes de marcar nada.
 
 ## Watch out
 - `trail check` marca 7 conflictos léxicos sobre el texto del spec (suite/app, adapter real, autores/año, `/api/series`, redirect 302, cursor, Chrome). Verificados uno por uno contra el código commiteado: la suite de contrato sigue fuera de la config de la app (`testIgnore: "**/contract/**"`), no hay cambios en `src/app`, no se envía ningún parámetro de texto a `/api/series`, y el seam de la app sigue corriendo en Chromium. La justificación va en ambos mensajes de commit.
@@ -77,3 +80,10 @@ In the code:
 - src/sources/http.ts (`TIMEOUT_MS = 30_000`), tests/contract/http.spec.ts (test del plazo por defecto)
 - `npm run typecheck` limpio · `npm run test:contract` → 64 passed · `npm run test:e2e` → 5 passed
 - Commit f6b54ae en origin/main. La casilla del smoke (docs/specs/source-adapter.md:244) sigue sin marcar: hay que repetir `npm run smoke:olympus`, y lo corre una persona.
+- El humo pasa sobre un commit concreto; si main avanza después, el registro debe nombrar ese commit para que la evidencia siga siendo interpretable.
+- `trail check` sobre texto de spec que cita URLs, `BLOCKED` o «HTML del lector» dispara conflictos léxicos contra learnings de búsqueda server-side, orden por popularidad y seam único. Verificar contra el código antes de tocar nada: en este cierre el diff fue solo documentación, `testIgnore` intacto y sin orden por popularidad en el adapter.
+
+- docs/specs/source-adapter.md:244 (casilla marcada) y sección «Ejecución registrada (#20)»
+- Commit 4bb7681 en origin/main; smoke corrido por el responsable sobre 44f6ab7 → 1 passed (4.8 s)
+- Fixes que exigieron los smokes fallidos: aee39fd (Páginas por JSON), f6b54ae (timeout 30 s)
+- #20 cerrado COMPLETED; desbloquea #21. #33 sigue bloqueado además por #30 y #32.
