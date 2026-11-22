@@ -5,7 +5,9 @@ export const SOURCE_USER_AGENT = "ManhwaBot/1.0";
 
 const MAX_ATTEMPTS = 3;
 const BASE_DELAY_MS = 500;
-const TIMEOUT_MS = 15_000;
+// El catálogo completo (`/api/series/list`) tardó más de 15 s en el smoke del
+// #20 y abortó; una página sí responde dentro. 30 s cubre el endpoint lento.
+const TIMEOUT_MS = 30_000;
 
 /** Transporte inyectable: la suite de contrato lo sustituye sin abrir la red. */
 export interface SourceHttp {

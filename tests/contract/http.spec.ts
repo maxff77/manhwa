@@ -188,6 +188,37 @@ test("el timeout aborta la petición de verdad y lanza UPSTREAM", async () => {
   expect(intentos).toBe(1);
 });
 
+// El smoke del #20 vio /api/series/list abortar a los 15 s: el catálogo
+// completo tarda más que una página. Una señal no expone su plazo, así que se
+// mide cuándo aborta de verdad contra una referencia de 15 s del mismo instante.
+test.setTimeout(60_000);
+test("el timeout por defecto aguanta el catálogo completo: más de los 15 s que lo abortaron", async () => {
+  let senal: AbortSignal | undefined;
+
+  await withFetch(
+    async (_url, init) => {
+      senal = init.signal ?? undefined;
+      return ok();
+    },
+    async () => {
+      await sourceFetch(URL_SERIE, createSourceHttp(TRAP_HOST));
+    },
+  );
+
+  expect(senal).toBeInstanceOf(AbortSignal);
+
+  const referencia = AbortSignal.timeout(15_000);
+  const plazo = (signal: AbortSignal) =>
+    new Promise<number>((resolve) => {
+      const inicio = Date.now();
+      signal.addEventListener("abort", () => resolve(Date.now() - inicio), { once: true });
+    });
+
+  const [propio, quince] = await Promise.all([plazo(senal!), plazo(referencia)]);
+
+  expect(propio).toBeGreaterThan(quince + 1_000);
+});
+
 test("el transporte por defecto deja una petición en vuelo por host", async () => {
   let enVuelo = 0;
   let maxEnVuelo = 0;
