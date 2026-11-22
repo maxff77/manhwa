@@ -33,7 +33,7 @@ Cada tick, el poller selecciona los `SeriesSource` con `nextCheckAt` vencido (o 
 
 1. Se pide la primera página con `direction=desc`.
 2. Se recorre hasta encontrar un `externalId` ya conocido en la DB o agotar 3 páginas (120 Capítulos).
-3. Se insertan los nuevos con `createMany({ skipDuplicates: true })` por `(sourceId, externalId)`, en orden ascendente, guardando `publishedAt`.
+3. Se insertan los nuevos con `createMany({ skipDuplicates: true })` por `(seriesId, sourceId, externalId)`, en orden ascendente, guardando `publishedAt`. El segmento de URL se repite entre Series («1», «2»…), así que la identidad es por Serie y Fuente (#21).
 4. Si se agotan las 3 páginas con todos los Capítulos nuevos, se registra la anomalía y se insertan los 120 más recientes; los anteriores los completa la sincronización completa al visitar la Serie.
 5. Un Capítulo con `number: null` se omite con log (el esquema exige número); se reintenta en la siguiente pasada.
 
