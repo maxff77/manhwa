@@ -241,7 +241,7 @@ Tests contra fixtures; sin red y sin DB. La suite compartida vive en `tests/cont
 - [x] `getChapterPages` lee las URLs de las Páginas del JSON `/api/capitulo/<slug>/<segmento>?type=comic` (`chapter.pages`) en orden 0-based.
 - [x] El adapter real pasa la misma suite de contrato que el fake, con fixtures (`tests/contract/olympus-source-adapter.spec.ts`).
 - [x] Los 302 al host trampa, 403, 429 y 5xx se reintentan y, al agotarse, lanzan el `kind` correcto (`tests/contract/olympus-http.spec.ts`).
-- [ ] Smoke manual contra Olympus ejecutado por una persona (procedimiento abajo); el agente no rastrea producción.
+- [x] Smoke manual contra Olympus ejecutado por una persona (procedimiento abajo); el agente no rastrea producción.
 
 ## Mecanismo de Olympus
 
@@ -271,3 +271,18 @@ Al terminar:
 
 - Anotar fecha/hora UTC y si hubo 302 al host trampa / 403 / 429 (el adapter reintenta solo; los fallos agotados salen como `SourceError` con su `kind`).
 - Pegar la salida como comentario en #20 y marcar la casilla del smoke de arriba.
+
+### Ejecución registrada (#20)
+
+Ejecutado por el responsable el 2026-11-22 (UTC), sobre `44f6ab7`: **1 passed (4.8 s)**, sin 302 al host trampa, 403 ni 429 observados.
+
+```
+catálogo: 15 Series, nextCursor=true
+primera Serie: comic-academia-de-la-ascension-20261121-080148449 — Academia de la Ascensión
+búsqueda local "a": 20 resultados
+detalle: estado=ongoing, géneros=9, sinopsis=sí
+Capítulos recientes: 40, primero=199
+Páginas del primer Capítulo: 33, primera URL=https://media.imagesolymp.xyz/comics/11/129141/(CREDITOS-OLYMPUS-2026-199.webp
+```
+
+Dos ejecuciones anteriores fallaron y motivaron cambios ya commiteados: el HTML del lector devolvía `BLOCKED` (→ Páginas por JSON, `aee39fd`) y `/api/series/list` abortaba a los 15 s (→ timeout de 30 s, `f6b54ae`).
