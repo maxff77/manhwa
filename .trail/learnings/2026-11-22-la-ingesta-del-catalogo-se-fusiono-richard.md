@@ -3,7 +3,7 @@ title: "La ingesta del Catalogo se fusiono en main local sin publicar, y se veri
 author: Richard
 date: 2026-11-22
 branch: main
-cost: { minutes: 145, tokens: 40543159 }
+cost: { minutes: 273, tokens: 97637502 }
 id: l-7c0bc91a
 scope: repo
 status: active
@@ -14,6 +14,11 @@ touches:
   - playwright.ingest.config.ts
   - src/sources/olympus.ts
   - src/ingest/catalog.ts
+  - docs/specs/catalog.md
+  - docs/specs/source-adapter.md
+  - scripts/migrate-series-identity.ts
+  - src/ingest/identity.ts
+  - src/sources/http.ts
 ---
 
 ## Decided
@@ -28,6 +33,11 @@ touches:
 - El slug que expone Olympus no es identidad estable: lleva un sufijo -YYYYMMDD-HHMMSSmmm que el mirror regenera a diario para las Series actualizadas. La misma Serie (id numerico 11, portada /covers/11/) quedo guardada con dos externalId de fechas distintas, porque el pipeline identifica por SeriesSource(sourceId, externalId) y el sufijo nuevo no coincide con el guardado.
 - Una suite verde con el adaptador falso no prueba idempotencia contra la Fuente real: las fixtures usan slugs fijos, asi que nunca ejercen el drift. El criterio se destapo solo al correr la carga real y comparar el conteo de filas contra el del catalogo vivo (973 filas para 896 items).
 - No activar el timer diario mientras el drift exista: cada pasada anade hasta 204 filas duplicadas, medida contra el catalogo vivo (mismaBasePeroSufijoNuevo=204, baseRealmenteNueva=0).
+- La identidad de la Serie es el slug SIN el sufijo -YYYYMMDD-HHMMSSmmm, porque el mirror lo regenera a diario y con el slug completo cada pasada creaba una Serie nueva. El adapter resuelve el slug vivo desde /api/series/list (ya cacheado para la Busqueda) antes de pedir detalle, Capitulos y Paginas: cero peticiones extra por Serie, y la API sigue recibiendo el unico slug que acepta.
+- Quitar el sufijo del externalId NO basta por si solo: hay que resolver el vivo aparte. Lo descartado antes fue usar el base directamente en la ruta (404 medido); resolverlo desde el catalogo si funciona y es lo que se implemento.
+- Los vinculos ya ingeridos se migran con un comando propio (catalog:migrate-identity) que deja la identidad estable y fusiona los duplicados conservando la fila mas reciente, porque la ultima pasada es la que refresco los datos. Una Serie con Seguimiento, Progreso, Coleccion o Comentario NO se borra: la cascada se llevaria esos datos, asi que se omite con log para revision humana.
+- Un aborto al LEER el cuerpo de la respuesta es UPSTREAM, no PARSE, porque el AbortSignal del transporte cubre fetch + lectura: Olympus entrego los headers de page=2 a los 18 s y abortó a los 30 s leyendo. Etiquetarlo PARSE mandaba a mirar el adapter cuando el problema era el plazo.
+- El job reintenta una pagina del listado hasta 2 veces con backoff (1 s, 2 s) ante UPSTREAM/RATE_LIMITED/BLOCKED, porque el spec deja el reintento de transporte al pipeline y el fallo medido es intermitente: la misma page=2 respondio en 7.7 s al repetir.
 
 ## Tried and ruled out
 - Push + Pull Request: el responsable eligio merge local; publicar es decision suya y sigue pendiente.
@@ -40,6 +50,8 @@ touches:
 - Quitar el sufijo y usar el slug base como externalId: el endpoint exige el slug vivo. /api/series/<base>?type=comic devuelve 404 y con el sufijo de hoy 200, confirmado en dos Series distintas; la URL publica /series/comic-<base> tambien da 404.
 - Usar el id numerico en la ruta: /api/series/11?type=comic devuelve 400 ZodError; la API solo acepta slug.
 - Buscar un slug canonico en el payload de detalle: note, gallery y disqus_key son null y slug trae el mismo sufijo, asi que no hay campo alternativo.
+- Dejar el drift sin arreglo y solo advertir que no se active el timer: descartado porque el criterio de idempotencia del ticket no se cumple contra la Fuente real y la base creceria ~204 filas duplicadas por dia.
+- Usar el id numerico como externalId: unico y estable, pero ilegible en logs y con el mismo requisito de resolver el slug vivo; el responsable eligio el slug base.
 
 ## Watch out
 - Tras un merge que toca package.json hay que `npm install` en el checkout principal: tsx faltaba alli aunque la rama lo tenia instalado. Sin eso `npm run catalog:backfill` falla por binario ausente.
@@ -73,3 +85,12 @@ In the code:
 - src/ingest/catalog.ts busca el vinculo por sourceId_externalId con summary.externalId tal cual.
 - Conteos tras la carga real: series=973, vinculosOlympus=973, basesUnicas=896, chapters=30023; 76 de las 77 bases duplicadas comparten id numerico y 0 tienen id distinto.
 - Fechas de sufijo en DB: 20261122 y 20261123; en el catalogo vivo: solo 20261124.
+- Antes de activar el timer diario hay que correr catalog:migrate-identity sobre la base destino: sin ella los vinculos viejos siguen teniendo el sufijo y el adapter no los encuentra.
+- La migracion es idempotente: reejecutarla devuelve renamed=0 merged=0 skipped=0.
+
+- src/sources/olympus.ts: MIRROR_SUFFIX, stableSlug/stableExternalId y liveSlug() resolviendo desde catalog().
+- src/ingest/identity.ts + scripts/migrate-series-identity.ts (npm run catalog:migrate-identity), mismo advisory lock que el backfill.
+- src/sources/http.ts: parseSourceBody separa lectura (UPSTREAM) de parseo (PARSE).
+- src/ingest/catalog.ts: CATALOG_RETRIES=2, CATALOG_RETRY_DELAY_MS=1000, evento catalog-retry.
+- Migracion corrida sobre desarrollo: renamed=204 merged=77 skipped=0; reejecucion no-op; backfill posterior exit 0 con 896 Series, 0 con sufijo, 0 slugs duplicados, 0 locks.
+- Suites sobre el commit del arreglo: contrato 71, ingesta 22, e2e 5, typecheck limpio.
