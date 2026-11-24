@@ -244,6 +244,13 @@ Tests contra fixtures; sin red y sin DB. La suite compartida vive en `tests/cont
 - [x] Los 302 al host trampa, 403, 429 y 5xx se reintentan y, al agotarse, lanzan el `kind` correcto (`tests/contract/olympus-http.spec.ts`).
 - [x] Smoke manual contra Olympus ejecutado por una persona (procedimiento abajo); el agente no rastrea producción.
 
+### Identidad estable (#21)
+
+- [x] `externalId` es el slug **sin** el sufijo `-YYYYMMDD-HHMMSSmmm`: dos corridas del Catálogo con sufijos distintos devuelven la misma identidad (`tests/contract/olympus-identity.spec.ts`).
+- [x] `getSeries`, `listChapters`, `listRecentChapters` y `getChapterPages` resuelven el slug vivo desde `/api/series/list` cacheado antes de pedir; la API solo acepta el vivo (el base devuelve 404, medido).
+- [x] Las URLs de Serie y Capítulo que devuelve el adapter usan la identidad estable, no el slug vivo.
+- [x] Una Serie que existe en el Catálogo y no tiene Capítulos sigue siendo página vacía, no `NOT_FOUND`, con la resolución por catálogo.
+
 ## Mecanismo de Olympus
 
 El listado de capítulos de Olympus es JSON paginado en `/api/series/<slug>/chapters?page=N&direction=asc|desc&type=comic` (40 por página, `meta.last_page`); el slug de la API no lleva el prefijo `comic-`. Detalle en la resolución de [Mecanismo de listado de capítulos de Olympus](https://github.com/maxff77/manhwa/issues/13).
