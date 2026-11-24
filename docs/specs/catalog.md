@@ -144,6 +144,40 @@ WantedBy=timers.target
 
 `Persistent=true` recupera la pasada perdida si el VPS estaba apagado a la hora programada. No hay scheduler dentro de la app.
 
+### Ejecución registrada (#21)
+
+Migración de identidad sobre la base de desarrollo, 2026-11-24 (UTC):
+
+```
+{"event":"done","renamed":204,"merged":77,"skipped":0}
+```
+
+Reejecutada en el mismo run: `{"event":"done","renamed":0,"merged":0,"skipped":0}` — idempotente.
+
+Backfill contra Olympus sobre `3e42838`, 2026-11-24T19:45Z: **exit 0**, `done{pages:60,processed:896,failed:0}`. Sin `catalog-retry`, `catalog-failed`, `series-failed`, `chapter-skipped`, `chapter-duplicate` ni `fatal`.
+
+Estado de la base tras esa corrida:
+
+| Métrica | Valor |
+|---|---|
+| Series / vínculos de Olympus | 896 / 896 (el catálogo vivo trae 896) |
+| Vínculos con sufijo de fecha | 0 |
+| Slugs internos duplicados | 0 |
+| Series sin vínculo (huérfanas) | 0 |
+| Capítulos | 27.028 |
+| Series con Capítulos | 892 |
+| `latestChapter` con fecha | 892 |
+| `chaptersSyncedAt` marcado | 0 (el backfill no lo marca) |
+| Advisory locks colgando | 0 |
+
+Los huecos restantes son ausencia en la Fuente, verificados en vivo uno por uno, no fallos de ingesta:
+
+- **4 Series sin Capítulos**: `listRecentChapters` devuelve página vacía en Olympus (`las-ensenanzas-del-rey-demonio-a-un-hombre`, `mi-simulador-de-cultivo`, `que-debo-hacer-ahora-que-la-heroina-escapo-de-su-libro`, `vida-de-cirugia`).
+- **13 Series sin portada**: las 13 responden sin `coverUrl` en el detalle; 0 la exponen.
+- **77 Series sin géneros**: 74 tienen sinopsis (detalle pedido); las 3 restantes responden con `genres: []` y sin sinopsis en vivo.
+
+Una corrida anterior, antes del arreglo de identidad, dejó 973 Series para 896 del catálogo: el sufijo diario del mirror rompía `SeriesSource (sourceId, externalId)`. Ese fallo motivó `3e42838` y la migración de arriba.
+
 ## Fuera de alcance
 
 - **Filtros** por tipo, demografía, año, autores y erótico: campos vacíos en v1; dependen de MangaDex u otra metadata.
