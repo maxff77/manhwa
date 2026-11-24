@@ -110,6 +110,21 @@ SOURCE_ADAPTER=olympus npm run catalog:backfill
 
 Son ~60 páginas de catálogo más dos peticiones por Serie nueva (~890 Series): unas 1.840 peticiones espaciadas 500 ms, del orden de 20–30 min. Si el anti-bot corta la pasada, se relanza el mismo comando.
 
+### Migración de identidad (una sola vez por base)
+
+```bash
+npm run catalog:migrate-identity   # tsx scripts/migrate-series-identity.ts
+```
+
+Solo hace falta en una base que ya tenga Series ingeridas con el `externalId` viejo (el slug completo, con sufijo `-YYYYMMDD-HHMMSSmmm`). Deja el slug sin sufijo como identidad y fusiona los duplicados que ese sufijo produjo, conservando la fila más reciente (`updatedAt`), que es la que la última pasada refrescó.
+
+- Una Serie con Seguimiento, Progreso, Colección o Comentario **no se borra**: la cascada se llevaría esos datos. Se omite con log (`merge-skipped`) para revisión humana y el proceso sale 1.
+- Toma el mismo advisory lock que el backfill: no puede correr a la vez que él (`lock-busy` → exit 1).
+- Es idempotente: reejecutarla devuelve `renamed=0 merged=0 skipped=0`.
+- Logs JSON a stdout: `identity-renamed`, `series-merged`, `merge-skipped`, `rename-skipped`, `done`, `fatal`.
+
+Una base nueva no la necesita: el adapter ya expone la identidad estable desde la primera ingesta.
+
 ### Unidades systemd
 
 > **Antes de activar el timer (#21):** la base tiene que estar migrada a la identidad estable con `npm run catalog:migrate-identity`. El slug que expone Olympus lleva un sufijo `-YYYYMMDD-HHMMSSmmm` que el mirror regenera a diario; con ese sufijo en `SeriesSource.externalId`, cada pasada creaba Series duplicadas (medido el 2026-11-24: 973 filas para 896 Series del catálogo). El adapter ya expone el slug sin sufijo como identidad y resuelve el vivo desde el catálogo cacheado, así que con la base migrada el timer es seguro.
