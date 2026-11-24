@@ -259,6 +259,8 @@ Las Páginas también son JSON: `GET /api/capitulo/<slug>/<segmento>?type=comic`
 
 La Búsqueda no tiene endpoint server-side (#14): query vacía pagina `/api/series?page=N`; query no vacía descarga `/api/series/list` una vez (caché de 10 min, solo `type === "comic"`), normaliza NFD + minúsculas + trim y pagina en local de 20 en 20. Cursores opacos base64url (`{v,p}` para páginas, `{v,q,o}` para offsets). Un fallo del catálogo lanza `SourceError`; nunca se devuelve una lista vacía que mentiría sobre «sin resultados».
 
+El slug que sirve Olympus lleva un sufijo `-YYYYMMDD-HHMMSSmmm` que el mirror regenera a diario para las Series actualizadas (#21). El adapter expone como `externalId` el slug **sin** ese sufijo y resuelve el slug vivo desde la misma caché de `/api/series/list` antes de pedir detalle, Capítulos y Páginas: la API solo acepta el vivo (el slug base devuelve 404 y el id numérico 400, medidos). Cero peticiones extra por Serie. Las URLs de Serie y Capítulo que devuelve el adapter usan la identidad estable.
+
 ### Smoke manual (lo ejecuta una persona)
 
 El agente no hace scraping de producción. El smoke vive en `tests/smoke/olympus.spec.ts` con su propia config (`playwright.smoke.config.ts`): **sin app ni Postgres**, pero con red real. Las suites de contrato y de la app lo excluyen (`testIgnore`), así que nunca corre en CI ni por accidente.
