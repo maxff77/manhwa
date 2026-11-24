@@ -173,6 +173,62 @@ test("un corte a mitad del catálogo se reanuda sin repetir trabajo", async () =
   expect(spy.recentCalls).toBe(1);
 });
 
+test("una página que falla por transporte se reintenta y la pasada continúa", async () => {
+  const f = fixtures();
+  const sano = new FakeSourceAdapter(f);
+  let fallosRestantes = 1;
+  const intermitente: SourceAdapter = {
+    ...sano,
+    slug: sano.slug,
+    search: (query: string, cursor?: string): Promise<SourceSearchPage> => {
+      if (cursor === "2" && fallosRestantes > 0) {
+        fallosRestantes--;
+        throw new SourceError("UPSTREAM", "Olympus tardó entregando el cuerpo");
+      }
+      return sano.search(query, cursor);
+    },
+    getSeries: (id: string) => sano.getSeries(id),
+    listChapters: (id: string) => sano.listChapters(id),
+    listRecentChapters: (id: string, cursor?: string) => sano.listRecentChapters(id, cursor),
+    getChapterPages: (s: string, c: string) => sano.getChapterPages(s, c),
+  };
+
+  const { deps: d, events } = deps(f, intermitente);
+  const result = await backfillCatalog(d);
+
+  expect(result).toEqual({ pages: 2, processed: 3, failed: 0 });
+  expect(await prisma.series.count()).toBe(3);
+  expect(events).toContainEqual(
+    expect.objectContaining({ event: "catalog-retry", kind: "UPSTREAM", attempt: 1 }),
+  );
+});
+
+test("agotados los reintentos de una página, la pasada corta sin borrar lo persistido", async () => {
+  const f = fixtures();
+  const sano = new FakeSourceAdapter(f);
+  const siempreFalla: SourceAdapter = {
+    ...sano,
+    slug: sano.slug,
+    search: (query: string, cursor?: string): Promise<SourceSearchPage> => {
+      if (cursor === "2") {
+        throw new SourceError("UPSTREAM", "Olympus sigue tardando");
+      }
+      return sano.search(query, cursor);
+    },
+    getSeries: (id: string) => sano.getSeries(id),
+    listChapters: (id: string) => sano.listChapters(id),
+    listRecentChapters: (id: string, cursor?: string) => sano.listRecentChapters(id, cursor),
+    getChapterPages: (s: string, c: string) => sano.getChapterPages(s, c),
+  };
+
+  const { deps: d, events } = deps(f, siempreFalla);
+  await expect(backfillCatalog(d)).rejects.toMatchObject({ kind: "UPSTREAM" });
+
+  expect(await prisma.series.count()).toBe(2); // la página 1 quedó persistida
+  expect(events.filter((e) => e.event === "catalog-retry")).toHaveLength(2);
+  expect(events).toContainEqual(expect.objectContaining({ event: "catalog-failed", kind: "UPSTREAM" }));
+});
+
 test("un fallo del adapter en una Serie no borra filas y las demás se procesan", async () => {
   const f = fixtures();
   delete f.series.bruma; // getSeries de la Serie del medio → NOT_FOUND

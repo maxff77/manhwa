@@ -4,7 +4,11 @@ export type SourceSlug = string;
 export type SourceSeriesStatus = "ongoing" | "completed" | "hiatus" | "cancelled";
 
 export interface SourceSeriesSummary {
-  /** Identidad estable en la Fuente (slug de la URL). */
+  /**
+   * Identidad estable en la Fuente. Cada adapter decide qué parte de su
+   * identidad lo es: Olympus quita el sufijo `-YYYYMMDD-HHMMSSmmm` que su
+   * mirror regenera a diario (#21); el fake usa slugs cortos.
+   */
   externalId: string;
   title: string;
   coverUrl?: string;

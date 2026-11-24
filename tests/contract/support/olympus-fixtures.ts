@@ -56,8 +56,16 @@ const novela: CatalogItem = {
   slug: "novela-academia-oculta-20261114-080500000",
   type: "novel",
 };
+// Serie que existe en el Catálogo y no tiene Capítulos: página vacía, no 404.
+// Sin sufijo de fecha: la identidad estable coincide con el slug vivo (#21).
+const sinCapitulos: CatalogItem = {
+  id: 16,
+  name: "Serie Sin Capítulos",
+  slug: "sin-capitulos",
+  type: "comic",
+};
 
-const catalogItems = [academia, bruma, ceniza, larga];
+const catalogItems = [academia, bruma, ceniza, larga, sinCapitulos];
 
 /** `/api/series?page=N`: envoltura data.series + recommended_series que se ignora. */
 function catalogPage(items: CatalogItem[], currentPage: number, lastPage: number) {
@@ -176,10 +184,15 @@ export function olympusResponses(): Map<string, unknown> {
   return responses;
 }
 
-/** Identidades externas de las fixtures: un solo sitio donde viven los slugs. */
+/**
+ * Identidades externas de las fixtures: el slug SIN el sufijo `-YYYYMMDD-HHMMSSmmm`
+ * que el mirror regenera a diario (#21). El slug vivo solo vive en las rutas.
+ */
+const stableId = (slug: string) => `comic-${slug.replace(/-\d{8}-\d{9}$/, "")}`;
+
 export const olympusIds = {
-  academia: `comic-${academia.slug}`,
-  larga: `comic-${larga.slug}`,
+  academia: stableId(academia.slug),
+  larga: stableId(larga.slug),
 };
 
 /** Slug de la página 2 de Capítulos de la Serie larga, para mutar esa fixture. */

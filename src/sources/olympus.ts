@@ -97,6 +97,23 @@ function apiSlug(externalId: string): string {
   return slug;
 }
 
+/**
+ * El mirror regenera a diario un sufijo `-YYYYMMDD-HHMMSSmmm` en el slug de las
+ * Series actualizadas (#21). Ese sufijo no es identidad: la misma Serie (mismo
+ * id numérico y portada) aparecía con fechas distintas y el backfill la
+ * duplicaba. La identidad es el slug SIN sufijo; el slug vivo se resuelve desde
+ * el catálogo para pedir detalle y Capítulos, porque la API solo acepta el vivo.
+ */
+const MIRROR_SUFFIX = /-\d{8}-\d{9}$/;
+
+function stableSlug(slug: string): string {
+  return slug.replace(MIRROR_SUFFIX, "");
+}
+
+function stableExternalId(slug: string): string {
+  return `comic-${stableSlug(slug)}`;
+}
+
 function seriesUrl(externalId: string): string {
   return `${BASE}/series/${externalId}`;
 }
@@ -129,7 +146,7 @@ function mapStatus(status: OlympusSeries["status"]): SourceSeriesStatus | undefi
 }
 
 function toSummary(item: OlympusSeries): SourceSeriesSummary {
-  const externalId = `comic-${requireString(item.slug, "slug")}`;
+  const externalId = stableExternalId(requireString(item.slug, "slug"));
   const status = mapStatus(item.status);
 
   return {
@@ -299,8 +316,27 @@ export class OlympusSourceAdapter implements SourceAdapter {
     };
   }
 
+  /**
+   * Resuelve el slug vivo de una identidad estable. La API solo acepta el slug
+   * con el sufijo del día (#21), así que se busca en el catálogo completo, que
+   * ya está cacheado para la Búsqueda: cero peticiones extra por Serie.
+   */
+  private async liveSlug(externalId: string): Promise<string> {
+    const base = apiSlug(externalId);
+    const items = await this.catalog();
+    const found = items.find((item) => stableSlug(String(item.slug ?? "")) === base);
+
+    if (!found) {
+      throw new SourceError("NOT_FOUND", `Serie inexistente: ${externalId}`);
+    }
+
+    return requireString(found.slug, "slug");
+  }
+
   async getSeries(externalId: string): Promise<SourceSeriesDetail> {
-    const body = await this.getJson(`${BASE}/api/series/${apiSlug(externalId)}?type=comic`);
+    const body = await this.getJson(
+      `${BASE}/api/series/${await this.liveSlug(externalId)}?type=comic`,
+    );
 
     try {
       if (!isRecord(body) || !isRecord(body.data)) {
@@ -321,7 +357,7 @@ export class OlympusSourceAdapter implements SourceAdapter {
     page: number,
     direction: "asc" | "desc",
   ): Promise<{ items: SourceChapter[]; current: number; last: number; total: number }> {
-    const url = `${BASE}/api/series/${apiSlug(externalId)}/chapters?page=${page}&direction=${direction}&type=comic`;
+    const url = `${BASE}/api/series/${await this.liveSlug(externalId)}/chapters?page=${page}&direction=${direction}&type=comic`;
     const body = await this.getJson(url);
 
     if (!isRecord(body) || !isRecord(body.meta)) {
@@ -390,7 +426,7 @@ export class OlympusSourceAdapter implements SourceAdapter {
   ): Promise<SourcePage[]> {
     // El HTML del lector lo bloquea el anti-bot (smoke del #20: 302 al host
     // trampa agotados los reintentos); la API JSON responde. Mismo contrato.
-    const url = `${BASE}/api/capitulo/${apiSlug(seriesExternalId)}/${encodeURIComponent(chapterExternalId)}?type=comic`;
+    const url = `${BASE}/api/capitulo/${await this.liveSlug(seriesExternalId)}/${encodeURIComponent(chapterExternalId)}?type=comic`;
     const body = await this.getJson(url);
 
     try {

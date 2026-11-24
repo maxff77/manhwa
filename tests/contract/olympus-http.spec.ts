@@ -105,7 +105,7 @@ test("un 302 al host trampa seguido de 200 se reintenta y el adapter responde", 
   const { transport, adapter } = setup();
   transport.queueReply(olympusUrls.academiaDetail, trap);
 
-  const series = await adapter.getSeries("comic-academia-de-la-ascension-20261114-080134843");
+  const series = await adapter.getSeries(olympusIds.academia);
 
   expect(series.title).toBe("Academia de la Ascensión");
   expect(transport.calls.filter((url) => url === olympusUrls.academiaDetail)).toHaveLength(2);
@@ -190,10 +190,7 @@ test("un detalle de Serie con otra forma lanza PARSE, nunca un detalle a medias"
   const { transport, adapter } = setup();
   transport.queueReply(olympusUrls.academiaDetail, () => Response.json({ data: { name: "Sin slug" } }));
 
-  await expectSourceError(
-    adapter.getSeries("comic-academia-de-la-ascension-20261114-080134843"),
-    "PARSE",
-  );
+  await expectSourceError(adapter.getSeries(olympusIds.academia), "PARSE");
 });
 
 test("un Capítulo sin nombre lanza PARSE en vez de una lista parcial", async () => {
@@ -203,8 +200,5 @@ test("un Capítulo sin nombre lanza PARSE en vez de una lista parcial", async ()
     () => Response.json({ data: [{ id: 101 }], meta: { current_page: 1, last_page: 1, total: 1 } }),
   );
 
-  await expectSourceError(
-    adapter.listChapters("comic-academia-de-la-ascension-20261114-080134843"),
-    "PARSE",
-  );
+  await expectSourceError(adapter.listChapters(olympusIds.academia), "PARSE");
 });

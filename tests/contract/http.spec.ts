@@ -144,6 +144,30 @@ test("un parseo roto lanza PARSE y nunca devuelve una lista parcial", async () =
   await expectSourceError(parseSourceBody(response, parseRoto), "PARSE");
 });
 
+test("un cuerpo que aborta al leerse lanza UPSTREAM, no PARSE", async () => {
+  // El AbortSignal del transporte cubre fetch + lectura del cuerpo. Olympus
+  // manda los headers y luego tarda: page=2 abortó a los 30 s leyendo (#21).
+  // Eso es un fallo de la Fuente, no un payload con otra forma.
+  const controller = new AbortController();
+  const response = new Response(
+    new ReadableStream({
+      start(stream) {
+        stream.enqueue(new TextEncoder().encode('{"data":'));
+        controller.signal.addEventListener("abort", () =>
+          stream.error(new DOMException("aborted", "TimeoutError")),
+        );
+      },
+    }),
+    { status: 200 },
+  );
+  controller.abort();
+
+  await expectSourceError(
+    parseSourceBody(response, (body) => JSON.parse(body)),
+    "UPSTREAM",
+  );
+});
+
 test("el transporte por defecto aplica timeout y UA de bot", async () => {
   const inits: RequestInit[] = [];
 

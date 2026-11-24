@@ -119,13 +119,32 @@ export async function sourceFetch(url: string, http: SourceHttp): Promise<Respon
   throw new SourceError(kind, `La Fuente falló (${kind}): ${url}`, cause);
 }
 
-/** Parsea el cuerpo entero; cualquier fallo es `PARSE`, nunca una lista parcial. */
+/**
+ * Lee y parsea el cuerpo entero. Un fallo del parseo es `PARSE`; un fallo al
+ * LEER el cuerpo es de transporte (`UPSTREAM`), no de forma del payload.
+ *
+ * El `AbortSignal` del transporte cubre fetch + lectura: Olympus manda los
+ * headers y luego tarda, y `page=2` abortó a los 30 s leyendo el cuerpo (#21).
+ * Etiquetarlo `PARSE` mandaba a mirar el adapter cuando el problema era el plazo.
+ */
 export async function parseSourceBody<T>(
   response: Response,
   parse: (body: string) => T,
 ): Promise<T> {
+  let body: string;
+
   try {
-    return parse(await response.text());
+    body = await response.text();
+  } catch (cause) {
+    throw new SourceError(
+      "UPSTREAM",
+      `La Fuente falló al entregar el cuerpo (UPSTREAM): ${response.url}`,
+      cause,
+    );
+  }
+
+  try {
+    return parse(body);
   } catch (cause) {
     throw new SourceError("PARSE", `Respuesta inesperada de la Fuente: ${response.url}`, cause);
   }

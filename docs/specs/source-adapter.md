@@ -30,7 +30,7 @@ Spec del ticket [#6](https://github.com/maxff77/manhwa/issues/6). Única superfi
 
 ## Identidad
 
-- `Series.externalId` = slug estable de la URL de la serie (`/series/<slug>`).
+- `Series.externalId` = slug de la serie (`/series/<slug>`) **sin el sufijo `-YYYYMMDD-HHMMSSmmm`**. El mirror de Olympus regenera ese sufijo a diario para las Series actualizadas, así que el slug completo no es identidad: con él, cada pasada del backfill creaba una Serie nueva (#21). El adapter resuelve el slug vivo desde el catálogo cacheado para pedir detalle y Capítulos, porque la API solo acepta el slug con sufijo.
 - `Chapter.externalId` = segmento de la URL del capítulo (`/series/<slug>/capitulo/<segmento>`), **no** el número parseado. Si cambia la presentación del número, la identidad no se rompe.
 - `number` se parsea aparte y puede ser `null`; el pipeline decide omitir con log.
 - El adapter nunca ve ids internos. El pipeline hace upsert de `SeriesSource (sourceId, externalId)` y de `Chapter (seriesId, sourceId, externalId)`.

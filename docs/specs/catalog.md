@@ -98,8 +98,8 @@ npm run catalog:backfill   # tsx scripts/backfill-catalog.ts
 - Recorre `search("")` página a página y hace upsert de `Source`, `Series` y `SeriesSource`. La identidad de la Fuente vive en `SeriesSource (sourceId, externalId)`; el slug interno se asigna solo al crear y no cambia aunque cambie el título.
 - **Serie nueva o sin Capítulos**: pide `getSeries` (sinopsis, géneros, autores, año, estado) y la primera página de `listRecentChapters`. No marca `chaptersSyncedAt`: eso es de la sincronización al visitar la Serie.
 - **Serie existente con Capítulos**: actualiza título, portada y estado desde el resumen del listado; no vuelve a pedir detalle ni Capítulos.
-- Un fallo del adapter en una Serie se registra y se sigue con las demás; un fallo del listado corta la pasada. Nada persistido se borra. Reejecutar reanuda: lo ya completo se salta sin peticiones extra.
-- El proceso toma `pg_try_advisory_lock(hashtext('manhwa:catalog-backfill'))`; si otro lo tiene, sale 0 con `lock-busy`. Logs JSON a stdout (`page`, `series-created`, `series-failed`, `chapter-skipped`, `chapter-duplicate`, `catalog-failed`, `done`, `fatal`). Sale 1 si hubo fallos o excepción.
+- Un fallo del adapter en una Serie se registra y se sigue con las demás. Un fallo de transporte del listado (`UPSTREAM`, `RATE_LIMITED`, `BLOCKED`) se reintenta hasta 2 veces con backoff (1 s, 2 s): el spec del contrato deja ese reintento al job, no al adapter. Agotados los reintentos, la pasada corta. Nada persistido se borra. Reejecutar reanuda: lo ya completo se salta sin peticiones extra.
+- El proceso toma `pg_try_advisory_lock(hashtext('manhwa:catalog-backfill'))`; si otro lo tiene, sale 0 con `lock-busy`. Logs JSON a stdout (`page`, `series-created`, `series-failed`, `chapter-skipped`, `chapter-duplicate`, `catalog-retry`, `catalog-failed`, `done`, `fatal`). Sale 1 si hubo fallos o excepción.
 - La Fuente la elige `SOURCE_ADAPTER` vía composition root; sin valor el script falla, nunca cae en `fake`.
 
 La corrida contra Olympus la ejecuta una persona o el timer, no el agente (mismo criterio que el smoke de #20):
@@ -112,7 +112,7 @@ Son ~60 páginas de catálogo más dos peticiones por Serie nueva (~890 Series):
 
 ### Unidades systemd
 
-> **No activar el timer todavía (#21).** El slug que expone Olympus lleva un sufijo `-YYYYMMDD-HHMMSSmmm` que el mirror regenera a diario, así que `SeriesSource (sourceId, externalId)` no coincide entre corridas y cada pasada crea Series duplicadas. Medido el 2026-11-24: 973 filas para 896 Series del catálogo (77 duplicadas), y la siguiente pasada duplicaría 204 más. Las unidades quedan documentadas para cuando la identidad de la Fuente sea estable; hasta entonces el backfill se corre a mano y bajo supervisión.
+> **Antes de activar el timer (#21):** la base tiene que estar migrada a la identidad estable con `npm run catalog:migrate-identity`. El slug que expone Olympus lleva un sufijo `-YYYYMMDD-HHMMSSmmm` que el mirror regenera a diario; con ese sufijo en `SeriesSource.externalId`, cada pasada creaba Series duplicadas (medido el 2026-11-24: 973 filas para 896 Series del catálogo). El adapter ya expone el slug sin sufijo como identidad y resuelve el vivo desde el catálogo cacheado, así que con la base migrada el timer es seguro.
 
 ```ini
 # /etc/systemd/system/manhwa-catalog.service

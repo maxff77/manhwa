@@ -26,6 +26,18 @@ const STATUS: Record<SourceSeriesStatus, SeriesStatus> = {
   cancelled: "CANCELLED",
 };
 
+/**
+ * Reintentos del job ante un fallo de transporte del listado. El spec deja el
+ * reintento al pipeline, no al adapter (`sourceFetch` lanza UPSTREAM sin
+ * reintentar). Olympus entrega los headers y luego tarda con el cuerpo: medido
+ * el 2026-11-24, `page=2` abortó a los 30 s leyendo (#21).
+ */
+const CATALOG_RETRIES = 2;
+const CATALOG_RETRY_DELAY_MS = 1_000;
+const RETRYABLE = new Set(["UPSTREAM", "RATE_LIMITED", "BLOCKED"]);
+
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
 const SOURCE_NAMES: Record<string, string> = {
   olympus: "Olympus",
   fake: "Fuente falsa",
@@ -195,13 +207,29 @@ export async function backfillCatalog(
   let failed = 0;
 
   do {
+    // El adapter no reintenta un fallo de transporte: el spec deja ese
+    // reintento al job. Olympus entrega los headers y luego tarda con el
+    // cuerpo (#21: page=2 abortó a los 30 s leyendo), así que una página
+    // intermitente se vuelve a pedir antes de rendirse.
     let page;
-    try {
-      page = await source.search("", cursor);
-    } catch (error) {
-      if (!(error instanceof SourceError)) throw error;
-      log({ event: "catalog-failed", kind: error.kind, message: error.message });
-      throw error;
+    for (let attempt = 0; ; attempt++) {
+      try {
+        page = await source.search("", cursor);
+        break;
+      } catch (error) {
+        if (!(error instanceof SourceError)) throw error;
+        if (attempt >= CATALOG_RETRIES || !RETRYABLE.has(error.kind)) {
+          log({ event: "catalog-failed", kind: error.kind, message: error.message });
+          throw error;
+        }
+        log({
+          event: "catalog-retry",
+          kind: error.kind,
+          attempt: attempt + 1,
+          message: error.message,
+        });
+        await sleep(CATALOG_RETRY_DELAY_MS * 2 ** attempt);
+      }
     }
     pages++;
     log({ event: "page", page: pages, items: page.items.length });
