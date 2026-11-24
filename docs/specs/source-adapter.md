@@ -129,8 +129,8 @@ export type SourceErrorKind =
   | "NOT_FOUND"    // la serie/capítulo no existe en la Fuente
   | "BLOCKED"      // 302 al host trampa o 403 persistente
   | "RATE_LIMITED" // 429 agotados los reintentos
-  | "UPSTREAM"     // 5xx u otro fallo del sitio
-  | "PARSE";       // respuesta inesperada o HTML/JSON inválido
+  | "UPSTREAM"     // 5xx, timeout o fallo al LEER el cuerpo de la respuesta
+  | "PARSE";       // cuerpo recibido pero con otra forma: HTML/JSON inválido
 
 export class SourceError extends Error {
   constructor(
@@ -230,6 +230,7 @@ Tests contra fixtures; sin red y sin DB. La suite compartida vive en `tests/cont
 - [x] `listRecentChapters`: más recientes primero, cursor con más páginas y cursor final, página vacía.
 - [x] `getChapterPages`: orden y `position` 0-based, capítulo vacío, listado de imágenes ausente → `PARSE`.
 - [x] HTTP: 302 al host trampa seguido de 200 → el reintento tiene éxito; 403 persistente → `BLOCKED`; 429 agotado → `RATE_LIMITED`; 5xx agotado → `UPSTREAM`; HTML roto → `PARSE`.
+- [x] Un cuerpo que aborta al leerse (timeout del transporte durante la lectura) → `UPSTREAM`, no `PARSE`: el payload nunca llegó, así que no es un fallo de forma (#21).
 - [x] Nunca se devuelve una lista parcial: un error en mitad del parseo lanza.
 - [x] El `FakeSourceAdapter` pasa la misma suite que cualquier adapter real.
 
