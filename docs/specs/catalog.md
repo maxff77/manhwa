@@ -112,6 +112,8 @@ Son ~60 páginas de catálogo más dos peticiones por Serie nueva (~890 Series):
 
 ### Unidades systemd
 
+> **No activar el timer todavía (#21).** El slug que expone Olympus lleva un sufijo `-YYYYMMDD-HHMMSSmmm` que el mirror regenera a diario, así que `SeriesSource (sourceId, externalId)` no coincide entre corridas y cada pasada crea Series duplicadas. Medido el 2026-11-24: 973 filas para 896 Series del catálogo (77 duplicadas), y la siguiente pasada duplicaría 204 más. Las unidades quedan documentadas para cuando la identidad de la Fuente sea estable; hasta entonces el backfill se corre a mano y bajo supervisión.
+
 ```ini
 # /etc/systemd/system/manhwa-catalog.service
 [Unit]
