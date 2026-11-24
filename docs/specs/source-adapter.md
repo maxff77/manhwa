@@ -250,6 +250,7 @@ Tests contra fixtures; sin red y sin DB. La suite compartida vive en `tests/cont
 - [x] `getSeries`, `listChapters`, `listRecentChapters` y `getChapterPages` resuelven el slug vivo desde `/api/series/list` cacheado antes de pedir; la API solo acepta el vivo (el base devuelve 404, medido).
 - [x] Las URLs de Serie y Capítulo que devuelve el adapter usan la identidad estable, no el slug vivo.
 - [x] Una Serie que existe en el Catálogo y no tiene Capítulos sigue siendo página vacía, no `NOT_FOUND`, con la resolución por catálogo.
+- [x] Verificado contra la Fuente real: corrida del 2026-11-24 sobre `3e42838` → `done{pages:60,processed:896,failed:0}`; la base queda en 896 Series / 896 vínculos, 0 con sufijo de fecha y 0 slugs duplicados. Detalle y conteos en `docs/specs/catalog.md` § «Ejecución registrada (#21)».
 
 ## Mecanismo de Olympus
 
