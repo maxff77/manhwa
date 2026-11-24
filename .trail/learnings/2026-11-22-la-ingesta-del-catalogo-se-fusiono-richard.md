@@ -3,7 +3,7 @@ title: "La ingesta del Catalogo se fusiono en main local sin publicar, y se veri
 author: Richard
 date: 2026-11-22
 branch: main
-cost: { minutes: 105, tokens: 16949831 }
+cost: { minutes: 145, tokens: 40543159 }
 id: l-7c0bc91a
 scope: repo
 status: active
@@ -12,6 +12,8 @@ touches:
   - package.json
   - playwright.config.ts
   - playwright.ingest.config.ts
+  - src/sources/olympus.ts
+  - src/ingest/catalog.ts
 ---
 
 ## Decided
@@ -23,6 +25,9 @@ touches:
 - El siguiente ticket se elige por los bloqueos nativos del tracker (dependencias abiertas = 0), no por el numero ni por el orden del mapa. Consultados los hijos abiertos, solo el de cuentas esta libre; toda la rama de catalogo sigue bloqueada por la ingesta.
 - Cada arnes apunta a una base distinta porque los configs de Playwright sobrescriben DATABASE_URL con la de test, mientras el job real lee la del .env (desarrollo). Por eso las suites verdes no dejaban el esquema al dia en la base destino: `prisma migrate status` sobre la de desarrollo fallo con "Following migration have not yet been applied: 20261122000000_chapter_identity_per_series". Hubo que correr `prisma migrate deploy` tambien alli.
 - Antes de entregar un comando de ingesta a una persona, comprobar `prisma migrate status` sobre la base que ESE comando usa, porque un indice unico viejo en la base destino reintroduce el descarte silencioso de Capitulos que la migracion corrigio: sin ella solo la primera Serie conservaba sus Capitulos.
+- El slug que expone Olympus no es identidad estable: lleva un sufijo -YYYYMMDD-HHMMSSmmm que el mirror regenera a diario para las Series actualizadas. La misma Serie (id numerico 11, portada /covers/11/) quedo guardada con dos externalId de fechas distintas, porque el pipeline identifica por SeriesSource(sourceId, externalId) y el sufijo nuevo no coincide con el guardado.
+- Una suite verde con el adaptador falso no prueba idempotencia contra la Fuente real: las fixtures usan slugs fijos, asi que nunca ejercen el drift. El criterio se destapo solo al correr la carga real y comparar el conteo de filas contra el del catalogo vivo (973 filas para 896 items).
+- No activar el timer diario mientras el drift exista: cada pasada anade hasta 204 filas duplicadas, medida contra el catalogo vivo (mismaBasePeroSufijoNuevo=204, baseRealmenteNueva=0).
 
 ## Tried and ruled out
 - Push + Pull Request: el responsable eligio merge local; publicar es decision suya y sigue pendiente.
@@ -32,6 +37,9 @@ touches:
 - Marcar la casilla del titulo original tal como estaba redactada: afirmaba algo que el codigo no hace.
 - Arrancar el ticket de catalogo por ser el siguiente en numero: su unico bloqueo abierto es la ingesta.
 - Confiar en que las suites verdes implican esquema al dia en todas las bases: descartado porque el global-setup migra solo la base de test (los configs fijan DATABASE_URL), y la de desarrollo seguia una migracion atras tras pasar ingest 16 / contrato 65 / e2e 5.
+- Quitar el sufijo y usar el slug base como externalId: el endpoint exige el slug vivo. /api/series/<base>?type=comic devuelve 404 y con el sufijo de hoy 200, confirmado en dos Series distintas; la URL publica /series/comic-<base> tambien da 404.
+- Usar el id numerico en la ruta: /api/series/11?type=comic devuelve 400 ZodError; la API solo acepta slug.
+- Buscar un slug canonico en el payload de detalle: note, gallery y disqus_key son null y slug trae el mismo sufijo, asi que no hay campo alternativo.
 
 ## Watch out
 - Tras un merge que toca package.json hay que `npm install` en el checkout principal: tsx faltaba alli aunque la rama lo tenia instalado. Sin eso `npm run catalog:backfill` falla por binario ausente.
@@ -57,3 +65,11 @@ In the code:
 - `npx prisma migrate deploy` sobre la base de desarrollo aplico 20261122000000_chapter_identity_per_series; despues `prisma migrate status` -> Database schema is up to date.
 - pg_indexes en chapters: chapters_seriesId_sourceId_externalId_key y chapters_seriesId_sourceId_number_key; la clave global vieja ausente.
 - Job re-corrido con adaptador falso sobre la base ya migrada: exit 0, sources=1 series=0 chapters=0, 0 advisory locks.
+- El id numerico si es estable y unico (896/896) y mapea 1:1 con el slug sin sufijo (0 conflictos); sirve como identidad, pero hay que resolver el slug vivo aparte para pedir detalle y capitulos.
+- El adaptador ya cachea /api/series/list (TTL 10 min) con el slug vivo y el id numerico de todas las Series: es el mapa disponible para resolver sin peticion extra.
+- Dos Series realmente distintas pueden compartir titulo normalizado; agrupar por titulo para detectar duplicados da falsos positivos. Agrupar por slug base o por id numerico.
+
+- src/sources/olympus.ts:132 arma externalId como comic-<slug completo>; apiSlug() (linea 90) lo usa en getSeries, chaptersPage y getChapterPages.
+- src/ingest/catalog.ts busca el vinculo por sourceId_externalId con summary.externalId tal cual.
+- Conteos tras la carga real: series=973, vinculosOlympus=973, basesUnicas=896, chapters=30023; 76 de las 77 bases duplicadas comparten id numerico y 0 tienen id distinto.
+- Fechas de sufijo en DB: 20261122 y 20261123; en el catalogo vivo: solo 20261124.
