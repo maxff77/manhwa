@@ -270,7 +270,7 @@ El agente no hace scraping de producción. El smoke vive en `tests/smoke/olympus
 npm run smoke:olympus
 ```
 
-Un solo test encadena las cinco operaciones contra Olympus, con el UA de bot propio y el espaciado del adapter, e imprime lo observado:
+Un solo test encadena las cinco operaciones contra Olympus, con el UA de bot propio y el espaciado del adapter, e imprime lo observado. Desde #21 el `externalId` que imprime es la **identidad estable** (slug sin el sufijo `-YYYYMMDD-HHMMSSmmm`), no el slug vivo: los pasos 3–5 lo pasan tal cual y el adapter resuelve el vivo internamente.
 
 1. `search("")` → primera página del Catálogo (~15 Series) y si hay `nextCursor`.
 2. `search("a")` → resultados del filtro local sobre `/api/series/list` (una sola petición; la segunda query reusa la caché).
