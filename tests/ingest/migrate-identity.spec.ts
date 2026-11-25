@@ -143,3 +143,44 @@ test("una Serie con Seguimiento no se borra: se registra y se deja intacta", asy
   expect(await prisma.series.count()).toBe(2);
   expect(events).toContainEqual(expect.objectContaining({ event: "merge-skipped" }));
 });
+
+test("si la identidad estable ya la ocupa una Serie protegida, el vínculo conservado no se renombra", async () => {
+  const source = await prisma.source.create({ data: { slug: "olympus", name: "Olympus" } });
+  // La que YA tiene la identidad estable es más vieja y tiene datos de Usuario:
+  // no se puede borrar, así que la identidad sigue ocupada por ella.
+  const protegida = await seedVinculo(
+    source.id,
+    "comic-academia-de-la-ascension",
+    "academia-de-la-ascension",
+    new Date("2026-11-20T00:00:00.000Z"),
+    [1],
+  );
+  const sufijada = await seedVinculo(
+    source.id,
+    "comic-academia-de-la-ascension-20261124-080148151",
+    "academia-de-la-ascension-2",
+    new Date("2026-11-24T00:00:00.000Z"),
+    [1, 2],
+  );
+  const user = await prisma.user.create({
+    data: { id: "user-1", name: "Lectora", email: "lectora@example.com" },
+  });
+  await prisma.follow.create({ data: { userId: user.id, seriesId: protegida } });
+
+  const events: Array<Record<string, unknown>> = [];
+  const result = await migrateSeriesIdentity({ db: prisma, log: (e) => events.push(e) });
+
+  // Dos omisiones: no borrar la protegida y no renombrar sobre una identidad ocupada.
+  expect(result).toEqual({ renamed: 0, merged: 0, skipped: 2 });
+  expect(await prisma.series.count()).toBe(2);
+  expect(await prisma.follow.count()).toBe(1);
+  expect(
+    (await prisma.seriesSource.findFirstOrThrow({ where: { seriesId: protegida } })).externalId,
+  ).toBe("comic-academia-de-la-ascension");
+  expect(
+    (await prisma.seriesSource.findFirstOrThrow({ where: { seriesId: sufijada } })).externalId,
+  ).toBe("comic-academia-de-la-ascension-20261124-080148151");
+  expect(events).toContainEqual(
+    expect.objectContaining({ event: "rename-skipped", reason: "identity-taken" }),
+  );
+});
