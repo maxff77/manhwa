@@ -1,4 +1,6 @@
+import { prisma } from "../src/lib/db";
 import { expect, test } from "./support/db";
+import { seedSeries } from "./support/seed";
 
 test("la home carga sin errores y muestra el Catálogo vacío", async ({ page }) => {
   const errors: string[] = [];
@@ -14,6 +16,60 @@ test("la home carga sin errores y muestra el Catálogo vacío", async ({ page })
   await expect(page.getByRole("heading", { level: 1, name: "Catálogo" })).toBeVisible();
   await expect(page.getByText("El Catálogo está vacío")).toBeVisible();
   expect(errors).toEqual([]);
+});
+
+test("un visitante anónimo ve Últimos capítulos y la rejilla de géneros", async ({ page }) => {
+  const serie = await seedSeries({ coverSourceUrl: "https://media.example/academia.webp" });
+  const source = await prisma.source.create({ data: { slug: "fake", name: "Fuente falsa" } });
+  await prisma.chapter.create({
+    data: {
+      seriesId: serie.id,
+      sourceId: source.id,
+      externalId: "cap-201",
+      number: 201,
+      publishedAt: new Date("2026-11-07T13:36:00.000Z"),
+    },
+  });
+
+  await page.goto("/");
+
+  await expect(
+    page.getByRole("heading", { level: 2, name: "Últimos capítulos" }),
+  ).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: "Géneros" })).toBeVisible();
+
+  // La tarjeta muestra título, estado y último Capítulo, y enlaza a la Serie.
+  const card = page.getByRole("link", { name: /Academia de la Ascensión/ });
+  await expect(card).toHaveAttribute("href", "/series/academia-de-la-ascension");
+  await expect(card).toContainText("En emisión");
+  await expect(card).toContainText("Capítulo 201");
+
+  // La rejilla enlaza al catálogo filtrado por género.
+  await expect(page.getByRole("link", { name: "Acción", exact: true })).toHaveAttribute(
+    "href",
+    "/?genre=Acci%C3%B3n",
+  );
+
+  // Sin sesión no hay «Continúa leyendo».
+  await expect(page.getByText("Continúa leyendo")).toHaveCount(0);
+});
+
+test("la rejilla de géneros lleva al Catálogo filtrado, no a la home sin filtrar", async ({ page }) => {
+  await seedSeries();
+  await seedSeries({
+    slug: "romance-completo",
+    title: "Romance Completo",
+    titleNormalized: "romance completo",
+    status: "COMPLETED",
+    genres: ["Romance"],
+  });
+
+  await page.goto("/");
+  await page.getByRole("link", { name: "Romance", exact: true }).click();
+
+  await expect(page).toHaveURL("/?genre=Romance");
+  await expect(page.getByRole("link", { name: /Romance Completo/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Academia de la Ascensión/ })).toHaveCount(0);
 });
 
 test("el tema sigue al sistema y aplica los tokens de HeroUI", async ({ page }) => {

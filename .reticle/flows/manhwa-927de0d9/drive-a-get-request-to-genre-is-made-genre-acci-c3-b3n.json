@@ -1,0 +1,50 @@
+{
+  "version": 2,
+  "name": "drive-a-get-request-to-genre-is-made-genre-acci-c3-b3n",
+  "projectId": "manhwa-927de0d9",
+  "createdAt": 1795572302007,
+  "steps": [
+    {
+      "tool": "reticle_act",
+      "anchor": {
+        "kind": "role",
+        "role": "link",
+        "name": "Acción",
+        "within": [
+          "listitem",
+          "list"
+        ]
+      },
+      "args": {},
+      "action": "click",
+      "source": {
+        "file": "src/app/page.tsx",
+        "line": 203
+      },
+      "expect": {
+        "kind": "net",
+        "method": "GET",
+        "urlContains": "/?genre=",
+        "status": 200
+      },
+      "page": "/"
+    }
+  ],
+  "startPath": "/",
+  "intent": "A visitor clicks a genre in the home grid and the browser loads the filtered catalog at /?genre=.",
+  "requires": [
+    {
+      "kind": "route",
+      "pathname": "/"
+    }
+  ],
+  "ensures": [
+    {
+      "kind": "route",
+      "pathname": "/"
+    }
+  ],
+  "author": {
+    "agent": "claude-code"
+  }
+}

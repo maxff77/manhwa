@@ -9,7 +9,7 @@
       "anchor": {
         "kind": "role",
         "role": "button",
-        "name": "Usar tema oscuro"
+        "name": "Usar tema claro"
       },
       "args": {},
       "action": "click",
@@ -24,7 +24,7 @@
             "kind": "element",
             "query": {
               "role": "button",
-              "name": "Usar tema claro"
+              "name": "Usar tema oscuro"
             }
           },
           {
@@ -41,7 +41,7 @@
       "anchor": {
         "kind": "role",
         "role": "button",
-        "name": "Usar tema claro"
+        "name": "Usar tema oscuro"
       },
       "args": {},
       "action": "click",
@@ -53,7 +53,7 @@
         "kind": "element",
         "query": {
           "role": "button",
-          "name": "Usar tema oscuro"
+          "name": "Usar tema claro"
         }
       },
       "page": "/"

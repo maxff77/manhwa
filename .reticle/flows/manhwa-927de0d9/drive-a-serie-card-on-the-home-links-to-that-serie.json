@@ -1,0 +1,49 @@
+{
+  "version": 2,
+  "name": "drive-a-serie-card-on-the-home-links-to-that-serie",
+  "projectId": "manhwa-927de0d9",
+  "createdAt": 1795572516494,
+  "steps": [
+    {
+      "tool": "reticle_act",
+      "anchor": {
+        "kind": "role",
+        "role": "link",
+        "name": "*El Villano Del Destino En emisión Capítulo 371",
+        "within": [
+          "listitem",
+          "list"
+        ]
+      },
+      "args": {},
+      "action": "click",
+      "source": {
+        "file": "src/app/page.tsx",
+        "line": 158
+      },
+      "expect": {
+        "kind": "route",
+        "pathname": "/series/el-villano-del-destino"
+      },
+      "page": "/",
+      "endPage": "/series/el-villano-del-destino"
+    }
+  ],
+  "startPath": "/",
+  "intent": "A visitor clicks a Serie card on the home and the browser moves to that Serie page.",
+  "requires": [
+    {
+      "kind": "route",
+      "pathname": "/"
+    }
+  ],
+  "ensures": [
+    {
+      "kind": "route",
+      "pathname": "/series/el-villano-del-destino"
+    }
+  ],
+  "author": {
+    "agent": "claude-code"
+  }
+}
