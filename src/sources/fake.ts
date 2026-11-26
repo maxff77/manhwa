@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 import {
   SourceError,
   type SourceAdapter,
@@ -13,6 +15,19 @@ export interface FakeFixtures {
   series: Record<string, SourceSeriesDetail>;
   chapters: Record<string, SourceChapter[]>;
   pages: Record<string, SourcePage[]>;
+}
+
+/**
+ * Fixtures desde un archivo JSON (`FAKE_FIXTURES_FILE`). El arnés de v1 corre la
+ * app con `SOURCE_ADAPTER=fake` y necesita datos para verificar la
+ * sincronización al visitar una Serie (#23); sin variable el adapter arranca
+ * vacío, como antes. Las fechas ISO se reviven a Date.
+ */
+export function loadFakeFixtures(path: string): FakeFixtures {
+  const raw = readFileSync(path, "utf8");
+  return JSON.parse(raw, (key, value) =>
+    key === "publishedAt" && typeof value === "string" ? new Date(value) : value,
+  ) as FakeFixtures;
 }
 
 export class FakeSourceAdapter implements SourceAdapter {

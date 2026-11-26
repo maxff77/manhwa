@@ -1,14 +1,17 @@
-import { FakeSourceAdapter } from "./fake";
+import { FakeSourceAdapter, loadFakeFixtures } from "./fake";
 import { olympus } from "./olympus";
 import type { SourceAdapter } from "./types";
 
-/** El adapter falso parte sin fixtures; cada test inyecta los suyos. */
-export const fakeSourceAdapter = new FakeSourceAdapter({
-  search: {},
-  series: {},
-  chapters: {},
-  pages: {},
-});
+/**
+ * El adapter falso parte sin fixtures; cada test inyecta las suyas por
+ * constructor. `FAKE_FIXTURES_FILE` permite dar datos a la app corriendo con
+ * `SOURCE_ADAPTER=fake` (arnés de v1) sin hardcodearlos aquí.
+ */
+export const fakeSourceAdapter = new FakeSourceAdapter(
+  process.env.FAKE_FIXTURES_FILE
+    ? loadFakeFixtures(process.env.FAKE_FIXTURES_FILE)
+    : { search: {}, series: {}, chapters: {}, pages: {} },
+);
 
 const adapters: Record<string, SourceAdapter> = {
   [fakeSourceAdapter.slug]: fakeSourceAdapter,
