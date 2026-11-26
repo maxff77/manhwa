@@ -1,5 +1,54 @@
 {
   "intents": {
+    "inline:el-bot-n-de-tema-cambia-la-app-al-modo-oscuro-de-24b68ba8": {
+      "binding": {
+        "kind": "element",
+        "query": {
+          "name": "Usar tema claro",
+          "role": "button"
+        }
+      },
+      "declaredAt": 1795651852973,
+      "id": "inline:el-bot-n-de-tema-cambia-la-app-al-modo-oscuro-de-24b68ba8",
+      "provenBy": {
+        "at": 1795651853034,
+        "grade": "presence",
+        "runId": "drive-40847fa1b8d39ee6",
+        "verdictId": "reticle_act_and_wait:1795651853034"
+      },
+      "state": "proved",
+      "statement": "El botón de tema cambia la app al modo oscuro del theme monocromo.",
+      "status": "proved",
+      "subject": "unsorted",
+      "surface": {
+        "files": [
+          "src/app/page.tsx"
+        ]
+      },
+      "updatedAt": 1795651853040
+    },
+    "inline:la-app-usa-el-theme-monocromo-uber-de-heroui-el-14befad4": {
+      "binding": {
+        "kind": "element",
+        "query": {
+          "name": "Últimos capítulos",
+          "role": "heading"
+        }
+      },
+      "declaredAt": 1795651843971,
+      "id": "inline:la-app-usa-el-theme-monocromo-uber-de-heroui-el-14befad4",
+      "provenBy": {
+        "at": 1795651843994,
+        "grade": "presence",
+        "runId": "drive-40847fa1b8d39ee6",
+        "verdictId": "reticle_assert:1795651843994"
+      },
+      "state": "proved",
+      "statement": "La app usa el theme monocromo Uber de HeroUI: el acento es negro en modo claro y los textos cumplen WCAG 2.2 AA.",
+      "status": "proved",
+      "subject": "unsorted",
+      "updatedAt": 1795651843996
+    },
     "inline:la-home-carga-sin-errores-y-muestra-el-cat-logo-0be5ce5f": {
       "binding": {
         "kind": "allOf",

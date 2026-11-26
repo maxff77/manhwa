@@ -1,10 +1,34 @@
 {
   "entries": [
     {
+      "id": "flow:drive-el-bot-n-de-tema-cambia-la-app-al-modo-oscuro-de",
+      "statement": "El botón de tema cambia la app al modo oscuro del theme monocromo.",
+      "status": "proposed",
+      "subject": "drive-el-bot-n-de-tema-cambia-la-app-al"
+    },
+    {
+      "id": "flow:home-filtro-generos",
+      "statement": "A visitor marks one or more genres on the home. The home shows only Ser…",
+      "status": "proposed",
+      "subject": "home-filtro-generos"
+    },
+    {
       "id": "flow:la-home-carga-sin-errores",
       "statement": "Un visitante abre la home: carga sin errores de consola, muestra el Cat…",
       "status": "proposed",
       "subject": "la-home-carga-sin-errores"
+    },
+    {
+      "id": "inline:el-bot-n-de-tema-cambia-la-app-al-modo-oscuro-de-24b68ba8",
+      "statement": "El botón de tema cambia la app al modo oscuro del theme monocromo.",
+      "status": "proved",
+      "subject": "unsorted"
+    },
+    {
+      "id": "inline:la-app-usa-el-theme-monocromo-uber-de-heroui-el-14befad4",
+      "statement": "La app usa el theme monocromo Uber de HeroUI: el acento es negro en mod…",
+      "status": "proved",
+      "subject": "unsorted"
     },
     {
       "id": "inline:la-home-carga-sin-errores-y-muestra-el-cat-logo-0be5ce5f",

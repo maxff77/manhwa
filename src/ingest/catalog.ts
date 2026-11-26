@@ -8,6 +8,7 @@ import { normalizeTitle } from "../lib/normalize";
 import {
   SourceError,
   type SourceAdapter,
+  type SourceChapter,
   type SourceSeriesDetail,
   type SourceSeriesStatus,
   type SourceSeriesSummary,
@@ -186,6 +187,144 @@ export async function ingestSeries(
   });
 
   return { seriesId, created: !link };
+}
+
+/** Ventana de frescura de la lista completa al visitar una Serie (v1.md). */
+const SYNC_TTL_MS = 10 * 60_000;
+
+/**
+ * Sincronización al visitar una Serie (#23): si `chaptersSyncedAt` es nulo o
+ * tiene más de 10 minutos, pide `getSeries` y la lista completa de Capítulos,
+ * los upsertea y marca la fecha. Idempotente: la identidad del Capítulo es
+ * `(seriesId, sourceId, externalId)`, así que re-sincronizar no duplica.
+ *
+ * Un fallo del adapter se registra y se propaga sin tocar lo persistido: nunca
+ * se sirve ni se guarda una lista parcial.
+ */
+export async function syncSeries(deps: IngestDeps, slug: string): Promise<void> {
+  const { db, source, log } = deps;
+  const serie = await db.series.findUnique({
+    where: { slug },
+    select: { id: true, sources: { include: { source: { select: { slug: true } } } } },
+  });
+  if (!serie) throw new Error(`Serie inexistente: ${slug}`);
+
+  // v1 es una sola Fuente por Serie; el vínculo de la Fuente inyectada es el
+  // que se sincroniza. El registry no entra aquí: los tests inyectan el fake.
+  const link = serie.sources.find((v) => v.source.slug === source.slug);
+  if (!link) {
+    log({ event: "series-sync-skipped", slug, reason: "no-link-for-source", source: source.slug });
+    return;
+  }
+
+  if (
+    link.chaptersSyncedAt === null ||
+    Date.now() - link.chaptersSyncedAt.getTime() >= SYNC_TTL_MS
+  ) {
+    let detail: SourceSeriesDetail;
+    let chapters: SourceChapter[];
+    try {
+      detail = await source.getSeries(link.externalId);
+      chapters = await source.listChapters(link.externalId);
+    } catch (error) {
+      if (!(error instanceof SourceError)) throw error;
+      log({
+        event: "series-sync-failed",
+        slug,
+        externalId: link.externalId,
+        kind: error.kind,
+        message: error.message,
+      });
+      throw error;
+    }
+
+    // `(seriesId, sourceId, number)` también es único: dos Capítulos con el
+    // mismo número romperían el upsert. El primero de la Fuente gana.
+    const seen = new Set<number>();
+    const valid = chapters.filter((chapter) => {
+      if (chapter.number === null) {
+        log({
+          event: "chapter-skipped",
+          reason: "number-null",
+          seriesExternalId: link.externalId,
+          externalId: chapter.externalId,
+        });
+        return false;
+      }
+      if (seen.has(chapter.number)) {
+        log({
+          event: "chapter-duplicate",
+          seriesExternalId: link.externalId,
+          externalId: chapter.externalId,
+          number: chapter.number,
+        });
+        return false;
+      }
+      seen.add(chapter.number);
+      return true;
+    });
+
+    // Detalle + Capítulos + marca en una transacción: un corte no deja la
+    // fecha marcada sobre una lista a medias.
+    await db.$transaction(async (tx) => {
+      await tx.series.update({
+        where: { id: serie.id },
+        data: detailData(detail, detail),
+      });
+      // El número también es único por Serie y Fuente. Si otro segmento de URL
+      // ya lo ocupa (la Fuente cambió el slug del Capítulo), ese registro se
+      // reidentifica con el externalId vigente en vez de borrarse: borrarlo
+      // arrastraría en cascada el Progreso y los Comentarios del Capítulo.
+      const ocupados = await tx.chapter.findMany({
+        where: { seriesId: serie.id, sourceId: link.sourceId },
+        select: { id: true, externalId: true, number: true },
+      });
+      const porNumero = new Map(ocupados.map((c) => [c.number, c]));
+      const vigentes = new Set(valid.map((c) => c.externalId));
+      for (const chapter of valid) {
+        const data = {
+          number: chapter.number as number,
+          title: chapter.title ?? null,
+          publishedAt: chapter.publishedAt ?? null,
+        };
+        const ocupante = porNumero.get(chapter.number as number);
+        if (
+          ocupante &&
+          ocupante.externalId !== chapter.externalId &&
+          !vigentes.has(ocupante.externalId)
+        ) {
+          await tx.chapter.update({
+            where: { id: ocupante.id },
+            data: { externalId: chapter.externalId, ...data },
+          });
+          log({
+            event: "chapter-reidentified",
+            seriesExternalId: link.externalId,
+            externalId: ocupante.externalId,
+            nowExternalId: chapter.externalId,
+            number: chapter.number,
+          });
+          continue;
+        }
+        await tx.chapter.upsert({
+          where: {
+            seriesId_sourceId_externalId: {
+              seriesId: serie.id,
+              sourceId: link.sourceId,
+              externalId: chapter.externalId,
+            },
+          },
+          create: { seriesId: serie.id, sourceId: link.sourceId, externalId: chapter.externalId, ...data },
+          update: data,
+        });
+      }
+      await tx.seriesSource.update({
+        where: { id: link.id },
+        data: { chaptersSyncedAt: new Date(), url: detail.url },
+      });
+    });
+    log({ event: "series-synced", slug, externalId: link.externalId, chapters: valid.length });
+  }
 }
 
 /**

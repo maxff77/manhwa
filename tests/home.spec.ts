@@ -18,7 +18,7 @@ test("la home carga sin errores y muestra el Catálogo vacío", async ({ page })
   expect(errors).toEqual([]);
 });
 
-test("un visitante anónimo ve Últimos capítulos y la rejilla de géneros", async ({ page }) => {
+test("un visitante anónimo ve Últimos capítulos y el filtro de géneros", async ({ page }) => {
   const serie = await seedSeries({ coverSourceUrl: "https://media.example/academia.webp" });
   const source = await prisma.source.create({ data: { slug: "fake", name: "Fuente falsa" } });
   await prisma.chapter.create({
@@ -36,7 +36,8 @@ test("un visitante anónimo ve Últimos capítulos y la rejilla de géneros", as
   await expect(
     page.getByRole("heading", { level: 2, name: "Últimos capítulos" }),
   ).toBeVisible();
-  await expect(page.getByRole("heading", { level: 2, name: "Géneros" })).toBeVisible();
+  await expect(page.getByRole("grid", { name: "Géneros" })).toBeVisible();
+  await expect(page.getByText("1 Serie", { exact: true })).toBeVisible();
 
   // La tarjeta muestra título, estado y último Capítulo, y enlaza a la Serie.
   const card = page.getByRole("link", { name: /Academia de la Ascensión/ });
@@ -44,17 +45,14 @@ test("un visitante anónimo ve Últimos capítulos y la rejilla de géneros", as
   await expect(card).toContainText("En emisión");
   await expect(card).toContainText("Capítulo 201");
 
-  // La rejilla enlaza al catálogo filtrado por género.
-  await expect(page.getByRole("link", { name: "Acción", exact: true })).toHaveAttribute(
-    "href",
-    "/?genre=Acci%C3%B3n",
-  );
+  // Cada género es un chip seleccionable del filtro.
+  await expect(page.getByRole("row", { name: "Acción", exact: true })).toBeVisible();
 
   // Sin sesión no hay «Continúa leyendo».
   await expect(page.getByText("Continúa leyendo")).toHaveCount(0);
 });
 
-test("la rejilla de géneros lleva al Catálogo filtrado, no a la home sin filtrar", async ({ page }) => {
+test("marcar géneros filtra el Catálogo y la URL guarda la selección", async ({ page }) => {
   await seedSeries();
   await seedSeries({
     slug: "romance-completo",
@@ -65,11 +63,31 @@ test("la rejilla de géneros lleva al Catálogo filtrado, no a la home sin filtr
   });
 
   await page.goto("/");
-  await page.getByRole("link", { name: "Romance", exact: true }).click();
+  await page.getByRole("row", { name: "Romance", exact: true }).click();
 
   await expect(page).toHaveURL("/?genre=Romance");
+  await expect(page.getByRole("heading", { level: 2, name: "Romance" })).toBeVisible();
+  await expect(page.getByRole("status")).toHaveText("1 Serie de Romance");
   await expect(page.getByRole("link", { name: /Romance Completo/ })).toBeVisible();
   await expect(page.getByRole("link", { name: /Academia de la Ascensión/ })).toHaveCount(0);
+
+  // Varios géneros a la vez: Series de cualquiera de ellos.
+  await page.getByRole("row", { name: "Acción", exact: true }).click();
+  await expect(page).toHaveURL("/?genre=Acci%C3%B3n&genre=Romance");
+  await expect(page.getByRole("heading", { level: 2, name: "Acción o Romance" })).toBeVisible();
+  await expect(page.getByRole("status")).toHaveText("2 Series de Acción o Romance");
+  await expect(page.getByRole("link", { name: /Academia de la Ascensión/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Romance Completo/ })).toBeVisible();
+
+  await page.getByRole("link", { name: "Quitar filtros" }).click();
+  await expect(page).toHaveURL("/");
+  await expect(page.getByRole("heading", { level: 2, name: "Últimos capítulos" })).toBeVisible();
+
+  // Sin resultados, el aviso cuelga del h2 de la sección.
+  await page.goto("/?genre=Inexistente");
+  await expect(
+    page.getByRole("heading", { level: 3, name: "Ninguna Serie con ese género" }),
+  ).toBeVisible();
 });
 
 test("el tema sigue al sistema y aplica los tokens de HeroUI", async ({ page }) => {

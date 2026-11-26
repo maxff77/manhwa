@@ -1,46 +1,75 @@
-import { Card, Link } from "@heroui/react";
+import { Card, Chip } from "@heroui/react";
+import { linkVariants } from "@heroui/styles";
+import NextLink from "next/link";
 
+import { GenreFilter } from "@/components/genre-filter";
+import { Rail } from "@/components/rail";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
+import { STATUS_LABEL, chapterNumber, genreLabel, shortDate } from "@/lib/format";
 
 // Render por petición: sin esto Next prerenderiza la home en el build con la
 // base del build (.env) y sirve ese HTML aunque el runtime apunte a otra base
 // (medido: la home mostraba Series de desarrollo con la base de test vacía).
 export const dynamic = "force-dynamic";
 
-type LatestRow = {
+type SeriesRow = {
   slug: string;
   title: string;
   coverUrl: string | null;
   status: string;
   latestNumber: number | null;
+  latestAt: Date | null;
 };
 
-const STATUS_LABEL: Record<string, string> = {
-  ONGOING: "En emisión",
-  COMPLETED: "Completada",
-  HIATUS: "En pausa",
-  CANCELLED: "Cancelada",
-};
+const LATEST_SIZE = 20;
+const RAIL_SIZE = 12;
+const RAIL_GENRES = 3;
+const FILTER_LIMIT = 50;
 
-async function loadLatest(): Promise<LatestRow[]> {
-  // ponytail: MAX(publishedAt) por Serie vía SQL crudo; Prisma no ordena por agregado.
-  return prisma.$queryRaw<LatestRow[]>`
+/** Series ordenadas por su último Capítulo; `where` filtra sobre `s`. */
+function loadSeries(where: Prisma.Sql, limit: number): Promise<SeriesRow[]> {
+  // ponytail: el Capítulo más reciente por Serie vía LATERAL; Prisma no ordena por agregado.
+  return prisma.$queryRaw<SeriesRow[]>`
     SELECT s."slug", s."title", s."coverSourceUrl" AS "coverUrl", s."status"::text AS "status",
-           c."number" AS "latestNumber"
+           c."number" AS "latestNumber", c."publishedAt" AS "latestAt"
     FROM "series" s
     LEFT JOIN LATERAL (
-      SELECT MAX(ch."publishedAt") AS "maxPublishedAt" FROM "chapters" ch WHERE ch."seriesId" = s."id"
-    ) m ON true
-    LEFT JOIN LATERAL (
-      SELECT ch."number" FROM "chapters" ch
+      SELECT ch."number", ch."publishedAt" FROM "chapters" ch
       WHERE ch."seriesId" = s."id"
       ORDER BY ch."publishedAt" DESC NULLS LAST, ch."number" DESC
       LIMIT 1
     ) c ON true
-    ORDER BY m."maxPublishedAt" DESC NULLS LAST, s."titleNormalized" ASC, s."id" ASC
-    LIMIT 20
+    ${where}
+    ORDER BY c."publishedAt" DESC NULLS LAST, s."titleNormalized" ASC, s."id" ASC
+    LIMIT ${limit}
   `;
+}
+
+type Shelves = {
+  latest: SeriesRow[];
+  rails: Array<{ genre: string; items: SeriesRow[] }>;
+};
+
+/**
+ * «Últimos capítulos» y un carril por cada género grande. Cada carril excluye
+ * las Series ya mostradas: Acción cubre el 85 % del Catálogo y, sin esto, su
+ * carril repetía casi entero el de «Últimos capítulos».
+ */
+async function loadShelves(genres: string[]): Promise<Shelves> {
+  const latest = await loadSeries(Prisma.empty, LATEST_SIZE);
+  const shown = latest.map((serie) => serie.slug);
+  const rails: Shelves["rails"] = [];
+  for (const genre of genres.slice(0, RAIL_GENRES)) {
+    const items = await loadSeries(
+      Prisma.sql`WHERE ${genre} = ANY(s."genres") AND s."slug" <> ALL(${shown}::text[])`,
+      RAIL_SIZE,
+    );
+    shown.push(...items.map((serie) => serie.slug));
+    if (items.length > 0) rails.push({ genre, items });
+  }
+  return { latest, rails };
 }
 
 // ponytail: caché de datos por proceso con TTL de 60 s (catalog.md), solo para
@@ -53,16 +82,30 @@ async function loadLatest(): Promise<LatestRow[]> {
 // se descarta antes del TTL. Sin ella un test que siembra tras otro veía la lista
 // del anterior, y en producción un Capítulo nuevo tardaría hasta 60 s de más.
 const HOME_TTL_MS = 60_000;
-let latestCache: { latest: LatestRow[]; fingerprint: string; expiresAt: number } | null = null;
+let shelvesCache: { shelves: Shelves; fingerprint: string; expiresAt: number } | null = null;
 
-/** Huella barata del estado del Catálogo: cuántas Series y cuál es el último Capítulo. */
-async function catalogFingerprint(): Promise<string> {
+/** Huella barata del estado del Catálogo; también da el total de Series. */
+async function catalogStats() {
   const [row] = await prisma.$queryRaw<Array<{ series: bigint; chapters: bigint; newest: Date | null }>>`
     SELECT (SELECT count(*) FROM "series") AS series,
            (SELECT count(*) FROM "chapters") AS chapters,
            (SELECT MAX("publishedAt") FROM "chapters") AS newest
   `;
-  return `${row.series}:${row.chapters}:${row.newest?.getTime() ?? 0}`;
+  return {
+    total: Number(row.series),
+    fingerprint: `${row.series}:${row.chapters}:${row.newest?.getTime() ?? 0}`,
+  };
+}
+
+// ponytail: los géneros se piden por petición, sin caché: son una consulta de
+// microsegundos y así nunca quedan congelados con los de otra pasada (medido: un
+// test sembraba Romance y la home seguía mostrando solo Acción).
+async function loadGenres(): Promise<string[]> {
+  const rows = await prisma.$queryRaw<Array<{ genre: string }>>`
+    SELECT g AS genre FROM "series", unnest("genres") AS g
+    GROUP BY g ORDER BY count(*) DESC, g ASC
+  `;
+  return rows.map((row) => row.genre);
 }
 
 export default async function HomePage({
@@ -71,68 +114,40 @@ export default async function HomePage({
   searchParams: Promise<{ genre?: string | string[] }>;
 }) {
   const params = await searchParams;
-  const selected = [params.genre ?? []].flat().filter(Boolean);
+  const selected = [...new Set([params.genre ?? []].flat().filter(Boolean))];
+  const [genres, stats] = await Promise.all([loadGenres(), catalogStats()]);
 
-  if (selected.length > 0) {
-    // La rejilla de géneros se muestra también en la vista filtrada: se pide
-    // siempre, no depende de una visita previa a la home.
-    const [filtered, genreRows] = await Promise.all([
-      loadFiltered(selected),
-      prisma.$queryRaw<Array<{ genre: string }>>`
-        SELECT DISTINCT unnest("genres") AS genre FROM "series" ORDER BY genre ASC
-      `,
-    ]);
-    return renderHome(
-      filtered,
-      genreRows.map((row) => row.genre),
-      selected,
+  let content: React.ReactNode;
+  let status = "";
+  if (stats.total === 0) {
+    content = (
+      <div className="px-4 sm:px-6">
+        <EmptyCard title="El Catálogo está vacío" description="Vuelve pronto para descubrir Series." />
+      </div>
     );
+  } else if (selected.length > 0) {
+    const where = Prisma.sql`WHERE s."genres" && ${selected}::text[]`;
+    const [items, [{ count }]] = await Promise.all([
+      loadSeries(where, FILTER_LIMIT),
+      prisma.$queryRaw<[{ count: bigint }]>`SELECT count(*) FROM "series" s ${where}`,
+    ]);
+    content = <Results selected={selected} items={items} total={Number(count)} />;
+    status = `${seriesCount(Number(count))} de ${anyOf.format(selected.map(genreLabel))}`;
+  } else {
+    if (
+      !shelvesCache ||
+      shelvesCache.expiresAt <= Date.now() ||
+      shelvesCache.fingerprint !== stats.fingerprint
+    ) {
+      shelvesCache = {
+        shelves: await loadShelves(genres),
+        fingerprint: stats.fingerprint,
+        expiresAt: Date.now() + HOME_TTL_MS,
+      };
+    }
+    content = <ShelvesView shelves={shelvesCache.shelves} />;
   }
 
-  // ponytail: la caché guarda solo «Últimos capítulos». Los géneros se piden por
-  // petición: son una consulta de microsegundos y así la rejilla nunca queda
-  // congelada con los géneros de otra pasada (medido: un test sembraba Romance y
-  // la home seguía mostrando solo Acción).
-  const genreRows = await prisma.$queryRaw<Array<{ genre: string }>>`
-    SELECT DISTINCT unnest("genres") AS genre FROM "series" ORDER BY genre ASC
-  `;
-  const genres = genreRows.map((row) => row.genre);
-
-  const fingerprint = await catalogFingerprint();
-  if (
-    !latestCache ||
-    latestCache.expiresAt <= Date.now() ||
-    latestCache.fingerprint !== fingerprint
-  ) {
-    const latest = await loadLatest();
-    latestCache =
-      latest.length === 0
-        ? null
-        : { latest, fingerprint, expiresAt: Date.now() + HOME_TTL_MS };
-    return renderHome(latest, genres, []);
-  }
-  return renderHome(latestCache.latest, genres, []);
-}
-
-async function loadFiltered(genres: string[]): Promise<LatestRow[]> {
-  return prisma.$queryRaw<LatestRow[]>`
-    SELECT s."slug", s."title", s."coverSourceUrl" AS "coverUrl", s."status"::text AS "status",
-           c."number" AS "latestNumber"
-    FROM "series" s
-    LEFT JOIN LATERAL (
-      SELECT ch."number" FROM "chapters" ch
-      WHERE ch."seriesId" = s."id"
-      ORDER BY ch."publishedAt" DESC NULLS LAST, ch."number" DESC
-      LIMIT 1
-    ) c ON true
-    WHERE s."genres" && ${genres}::text[]
-    ORDER BY s."titleNormalized" ASC, s."id" ASC
-    LIMIT 50
-  `;
-}
-
-function renderHome(latest: LatestRow[], genres: string[], selected: string[]) {
-  const filtered = selected.length > 0;
   return (
     <div className="flex min-h-dvh flex-col">
       <a
@@ -144,94 +159,215 @@ function renderHome(latest: LatestRow[], genres: string[], selected: string[]) {
 
       <header className="border-b border-separator">
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
-          <Link href="/" className="text-lg font-semibold tracking-tight text-foreground">
+          <NextLink href="/" className="text-lg font-semibold tracking-tight text-foreground">
             Manhwa
-          </Link>
+          </NextLink>
           <ThemeToggle />
         </div>
       </header>
 
-      <main id="contenido" className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-10 px-4 py-10 sm:px-6">
-        <section aria-labelledby="catalog-title" className="flex flex-col gap-6">
-          <div className="flex max-w-prose flex-col gap-1">
-            <h1 id="catalog-title" className="text-3xl font-semibold tracking-tight">
-              Catálogo
-            </h1>
-            <p className="text-muted">Series de manhwa para leer en vertical, sin instalar nada.</p>
+      <main
+        id="contenido"
+        className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-10 pt-8 pb-16 sm:pt-10"
+      >
+        <div className="flex flex-col gap-4">
+          <div className="flex items-baseline justify-between gap-4 px-4 sm:px-6">
+            <h1 className="text-3xl font-semibold tracking-tight">Catálogo</h1>
+            {stats.total > 0 ? (
+              <p className="text-sm text-muted tabular-nums">{seriesCount(stats.total)}</p>
+            ) : null}
           </div>
+          {genres.length > 0 ? (
+            <GenreFilter
+              genres={genres.map((genre) => ({ id: genre, label: genreLabel(genre) }))}
+              selected={selected}
+            />
+          ) : null}
+          {/* Anuncia el resultado al filtrar (WCAG 4.1.3). Vive aquí, fuera del contenido
+              que cambia: una región viva recién montada no se anuncia de forma fiable. */}
+          <p role="status" className="sr-only">
+            {status}
+          </p>
+        </div>
 
-          {latest.length === 0 ? (
-            <Card className="max-w-xl">
-              <Card.Header>
-                <h2 className="text-sm leading-6 font-medium text-foreground">
-                  {filtered ? "Ninguna Serie con ese género" : "El Catálogo está vacío"}
-                </h2>
-                <Card.Description>Vuelve pronto para descubrir Series.</Card.Description>
-              </Card.Header>
-            </Card>
-          ) : (
-            <div className="flex flex-col gap-4">
-              <h2 className="text-xl font-semibold tracking-tight">Últimos capítulos</h2>
-              <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-                {latest.map((serie) => (
-                  <li key={serie.slug}>
-                    <Link
-                      href={`/series/${serie.slug}`}
-                      className="flex h-full flex-col gap-2 rounded-lg bg-surface p-3 no-underline shadow-surface"
-                    >
-                      {serie.coverUrl ? (
-                        <img
-                          alt=""
-                          src={serie.coverUrl}
-                          loading="lazy"
-                          referrerPolicy="no-referrer"
-                          className="aspect-[2/3] w-full rounded-md object-cover"
-                        />
-                      ) : (
-                        <div
-                          aria-hidden="true"
-                          className="aspect-[2/3] w-full rounded-md bg-surface-secondary"
-                        />
-                      )}
-                      <span className="text-sm font-medium text-foreground">{serie.title}</span>
-                      <span className="text-xs text-muted">
-                        {STATUS_LABEL[serie.status] ?? serie.status}
-                      </span>
-                      <span className="text-xs text-muted">
-                        {serie.latestNumber === null
-                          ? "Sin Capítulos"
-                          : `Capítulo ${serie.latestNumber}`}
-                      </span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </section>
-
-        <section aria-labelledby="genres-title" className="flex flex-col gap-4">
-          <h2 id="genres-title" className="text-xl font-semibold tracking-tight">
-            Géneros
-          </h2>
-          {genres.length === 0 ? (
-            <p className="text-muted">Todavía no hay géneros en el Catálogo.</p>
-          ) : (
-            <ul className="flex flex-wrap gap-2">
-              {genres.map((genre) => (
-                <li key={genre}>
-                  <Link
-                    href={`/?genre=${encodeURIComponent(genre)}`}
-                    className="rounded-md bg-default px-3 py-1.5 text-sm text-default-foreground no-underline"
-                  >
-                    {genre}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+        {content}
       </main>
     </div>
   );
+}
+
+function ShelvesView({ shelves }: { shelves: Shelves }) {
+  const now = Date.now();
+  return (
+    <>
+      <Rail title="Últimos capítulos">
+        {shelves.latest.map((serie, index) => (
+          <li key={serie.slug} className="w-40 shrink-0 snap-start sm:w-48 lg:w-56">
+            <SeriesItem serie={serie} now={now} eager={index < 3} />
+          </li>
+        ))}
+      </Rail>
+      {shelves.rails.map(({ genre, items }) => (
+        <Rail
+          key={genre}
+          title={genreLabel(genre)}
+          moreHref={`/?${new URLSearchParams({ genre })}`}
+        >
+          {items.map((serie) => (
+            <li key={serie.slug} className="w-36 shrink-0 snap-start sm:w-40">
+              <SeriesItem serie={serie} now={now} />
+            </li>
+          ))}
+        </Rail>
+      ))}
+    </>
+  );
+}
+
+const anyOf = new Intl.ListFormat("es", { type: "disjunction" });
+const link = linkVariants();
+
+function Results({
+  selected,
+  items,
+  total,
+}: {
+  selected: string[];
+  items: SeriesRow[];
+  total: number;
+}) {
+  const now = Date.now();
+  return (
+    <section aria-labelledby="results-title" className="flex flex-col gap-5 px-4 sm:px-6">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <div className="flex flex-col gap-1">
+          <h2 id="results-title" className="text-xl font-semibold tracking-tight text-balance">
+            {anyOf.format(selected.map(genreLabel))}
+          </h2>
+          <p className="text-sm text-muted tabular-nums">
+            {seriesCount(total)}
+            {total > items.length ? ` · las ${items.length} con Capítulo más reciente` : null}
+          </p>
+        </div>
+        <NextLink href="/" className={link.base({ className: "text-sm underline underline-offset-4" })}>
+          Quitar filtros
+        </NextLink>
+      </div>
+
+      {items.length === 0 ? (
+        <EmptyCard
+          level={3}
+          title="Ninguna Serie con ese género"
+          description="Prueba con otro género o quita los filtros."
+        />
+      ) : (
+        <ul className="grid grid-cols-2 gap-x-3 gap-y-6 sm:grid-cols-3 sm:gap-x-4 md:grid-cols-4 lg:grid-cols-6">
+          {items.map((serie, index) => (
+            <li key={serie.slug}>
+              <SeriesItem serie={serie} now={now} eager={index < 4} />
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function EmptyCard({
+  title,
+  description,
+  level = 2,
+}: {
+  title: string;
+  description: string;
+  level?: 2 | 3;
+}) {
+  // Encabezado plano del nivel que toca: Card.Title impone h3 y su `render` no
+  // funciona desde un server component. Dentro de los resultados cuelga de su h2.
+  const Heading = level === 2 ? "h2" : "h3";
+  return (
+    <Card className="max-w-xl">
+      <Card.Header>
+        <Heading className="text-sm leading-6 font-medium text-foreground">{title}</Heading>
+        <Card.Description>{description}</Card.Description>
+      </Card.Header>
+    </Card>
+  );
+}
+
+function SeriesItem({ serie, now, eager = false }: { serie: SeriesRow; now: number; eager?: boolean }) {
+  const chapter =
+    serie.latestNumber === null ? null : `Capítulo ${chapterNumber.format(serie.latestNumber)}`;
+  return (
+    <NextLink
+      href={`/series/${serie.slug}`}
+      className="group flex flex-col gap-2 rounded-lg text-foreground no-underline outline-none focus-visible:status-focused"
+    >
+      <div className="relative aspect-[2/3] overflow-hidden rounded-lg bg-surface-tertiary">
+        {serie.coverUrl ? (
+          <img
+            alt=""
+            src={serie.coverUrl}
+            loading={eager ? "eager" : "lazy"}
+            decoding="async"
+            referrerPolicy="no-referrer"
+            className="size-full object-cover transition-transform duration-200 ease-out group-hover:scale-[1.03] motion-reduce:transition-none"
+          />
+        ) : (
+          <span
+            aria-hidden="true"
+            className="grid size-full place-items-center text-5xl font-semibold text-muted"
+          >
+            {serie.title.replace(/^[^\p{L}\p{N}]+/u, "").charAt(0) || "?"}
+          </span>
+        )}
+        {chapter ? (
+          <Chip
+            aria-hidden="true"
+            color="accent"
+            variant="primary"
+            size="sm"
+            className="absolute bottom-2 left-2 rounded-md tabular-nums"
+          >
+            {chapter}
+          </Chip>
+        ) : null}
+      </div>
+      {/* Dos líneas reservadas: la línea de estado queda alineada en todo el carril. */}
+      <span className="line-clamp-2 min-h-[2lh] text-sm leading-snug font-medium group-hover:underline group-hover:underline-offset-2">
+        {serie.title}
+      </span>
+      <span className="text-xs text-muted">
+        {chapter ? <span className="sr-only">{chapter}, </span> : null}
+        {STATUS_LABEL[serie.status] ?? serie.status}
+        {" · "}
+        {chapter === null ? (
+          "Sin Capítulos"
+        ) : serie.latestAt ? (
+          <time dateTime={serie.latestAt.toISOString()}>{timeAgo(serie.latestAt, now)}</time>
+        ) : (
+          "Sin fecha"
+        )}
+      </span>
+    </NextLink>
+  );
+}
+
+const relative = new Intl.RelativeTimeFormat("es", { numeric: "auto" });
+
+/** «hace 5 horas», «ayer», «hace 3 días»; a partir de un mes, la fecha. */
+function timeAgo(date: Date, now: number): string {
+  const minutes = Math.round((date.getTime() - now) / 60_000);
+  if (minutes === 0) return "ahora mismo"; // Intl da «este minuto»
+  if (Math.abs(minutes) < 60) return relative.format(minutes, "minute");
+  const hours = Math.round(minutes / 60);
+  if (Math.abs(hours) < 24) return relative.format(hours, "hour");
+  const days = Math.round(hours / 24);
+  if (Math.abs(days) < 30) return relative.format(days, "day");
+  return shortDate.format(date);
+}
+
+/** «1 Serie», «896 Series»: el singular del GLOSSARY. */
+function seriesCount(total: number): string {
+  return total === 1 ? "1 Serie" : `${total} Series`;
 }
