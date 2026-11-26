@@ -36,7 +36,7 @@ La capa de lectura y organización que Olympus no da: un Catálogo con búsqueda
 - La lectura online usa el CDN de Olympus por hotlink; no hay caché propia de imágenes en v1.
 - La audiencia lee sobre todo en el móvil, en vertical, y quiere poder hacerlo en el metro o sin datos.
 - v1 se dimensiona para 100 concurrentes, con Postgres propio y scripts de ingesta y alertas disparados por timers systemd. Sin colas, réplicas ni multi-región.
-- La ingesta inicial recorre ~890 Series; el anti-bot de Olympus bloquea una parte de las peticiones, así que el backfill debe ser reanudable.
+- El Catálogo de Olympus tiene 896 Series (medido el 2026-11-24); el anti-bot de Olympus bloquea una parte de las peticiones, así que el backfill debe ser reanudable.
 
 ## Capabilities and Constraints
 
@@ -65,7 +65,7 @@ Comentarios y moderación (las tablas existen, sin API ni UI), MangaDex y metada
 
 - Interfaz y contenido en español de España neutro; se evitan anglicismos cuando el `GLOSSARY.md` tiene el término.
 - «Manhwa» es el nombre de trabajo del producto en la shell y el repositorio. No hay logotipo, paleta de marca ni assets gráficos propios todavía.
-- La identidad visual usa el tema por defecto de HeroUI v3: tokens semánticos, modo claro y oscuro, tipografía Geist. Ver `DESIGN.md`.
+- La identidad visual usa la preset «Uber» del Theme Builder de HeroUI v3 (monocromo: el color lo ponen las portadas), con modo claro y oscuro y tipografía Geist. Elegida el 2026-11-25; el detalle vive en `DESIGN.md`.
 
 ## Evidence on Hand
 
@@ -74,7 +74,8 @@ Comentarios y moderación (las tablas existen, sin API ni UI), MangaDex y metada
 - `GLOSSARY.md`: vocabulario del dominio.
 - `prototype/reader/`: prototipo desechable del lector (ventana de Páginas y scroll vertical).
 - `prisma/schema.prisma` y la migración inicial: modelo de datos completo de v1.
-- No hay todavía catálogo ingerido, fixtures reales, testimonios, métricas de tráfico ni assets de marca. No fabricarlos.
+- Catálogo real ingerido de Olympus en la base de desarrollo (2026-11-24, registro en `docs/specs/catalog.md`): 896 Series y 27.028 Capítulos. No todas las Series llegan completas, porque la Fuente no lo expone: 13 sin portada, 77 sin géneros y 4 sin Capítulos. Toda pantalla que muestre una Serie tiene que funcionar sin portada, sin géneros o sin Capítulos.
+- No hay fixtures reales, testimonios, métricas de tráfico ni assets de marca. No fabricarlos.
 
 ## Product Principles
 
@@ -83,3 +84,7 @@ Comentarios y moderación (las tablas existen, sin API ni UI), MangaDex y metada
 3. **El estado del lector no se pierde.** Progreso, Seguimientos y Descargas sobreviven a cambios de dispositivo, fallos de red y bloqueos de la Fuente.
 4. **Una sola Fuente en v1.** El adapter se sustituye en tests, nunca en producción por accidente; sin fallback silencioso.
 5. **Móvil primero y offline real.** La lectura vertical y la PWA son el camino principal, no un extra.
+
+## Accessibility & Inclusion
+
+WCAG 2.2 AA es el mínimo obligatorio en toda la interfaz. Cualquier cambio de diseño se revisa contra ese estándar.

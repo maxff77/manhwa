@@ -6,12 +6,13 @@ modes:
   - light
   - dark
 mode: operate
-source: "https://github.com/heroui-inc/heroui/blob/v3/packages/styles/themes/default/variables.css"
+theme: "Uber preset, HeroUI Theme Builder (https://heroui.com/themes)"
+source: "src/app/globals.css"
 ---
 
 # Design System: Manhwa
 
-The visual contract for the Manhwa platform: a working tool for finding, reading and tracking Series. The theme is HeroUI v3's default, with Geist as the application typeface. The theme CSS remains the source of truth.
+The visual contract for the Manhwa platform: a working tool for finding, reading and tracking Series. The theme is the «Uber» preset from HeroUI's Theme Builder: monochrome, with neutral grays and small radii, and Geist as the application typeface. The covers carry the color; the interface does not compete with them. `src/app/globals.css` is the source of truth.
 
 ## Surface Mode: Operate
 
@@ -46,7 +47,7 @@ Use `class="light"` or `data-theme="light"` for light mode and `class="dark"` or
 
 - Build calm, modern interfaces with a clear content hierarchy.
 - Prefer whitespace, typography, and surface levels over decoration.
-- Use one strong accent for primary actions and reserve status colors for meaning.
+- The accent is achromatic: black in light mode, near-white in dark mode. Primary actions, focus and selection use it. Do not add a decorative hue; status colors are the only hues in the interface, and they carry meaning.
 - Compose interfaces from HeroUI components before creating custom primitives.
 - Keep interactions accessible, keyboard friendly, and visibly focused.
 - Let semantic tokens adapt the interface between light and dark modes.
@@ -57,25 +58,25 @@ Use semantic HeroUI tokens and Tailwind utilities in product code. Raw values ar
 
 | Role | Tailwind utilities | CSS variables | Light | Dark | Purpose |
 | --- | --- | --- | --- | --- | --- |
-| Canvas | `bg-background text-foreground` | `--background`, `--foreground` | `oklch(0.9702 0 0)`, `oklch(0.2103 0.0059 285.89)` | `oklch(12% 0.005 285.823)`, `oklch(0.9911 0 0)` | Page background and primary content |
-| Surface | `bg-surface text-surface-foreground` | `--surface`, `--surface-foreground` | white, foreground | `oklch(0.2103 0.0059 285.89)`, foreground | Cards and non-floating containers |
-| Secondary surface | `bg-surface-secondary` | `--surface-secondary` | `oklch(0.9524 0.0013 286.37)` | `oklch(0.257 0.0037 286.14)` | Nested or lower-emphasis regions |
-| Tertiary surface | `bg-surface-tertiary` | `--surface-tertiary` | `oklch(0.9373 0.0013 286.37)` | `oklch(0.2721 0.0024 247.91)` | Stronger surface separation |
-| Overlay | `bg-overlay text-overlay-foreground` | `--overlay`, `--overlay-foreground` | white, foreground | `oklch(0.2103 0.0059 285.89)`, foreground | Popovers, menus, dialogs, and tooltips |
+| Canvas | `bg-background text-foreground` | `--background`, `--foreground` | `oklch(97.02% 0 0)`, `oklch(21.03% 0 0)` | `oklch(12% 0 0)`, `oklch(99.11% 0 0)` | Page background and primary content |
+| Surface | `bg-surface text-surface-foreground` | `--surface`, `--surface-foreground` | white, foreground | `oklch(21.03% 0 0)`, foreground | Cards and non-floating containers |
+| Secondary surface | `bg-surface-secondary` | `--surface-secondary` | `oklch(95.24% 0 0)` | `oklch(25.7% 0 0)` | Nested or lower-emphasis regions |
+| Tertiary surface | `bg-surface-tertiary` | `--surface-tertiary` | `oklch(93.73% 0 0)` | `oklch(27.21% 0 0)` | Stronger surface separation |
+| Overlay | `bg-overlay text-overlay-foreground` | `--overlay`, `--overlay-foreground` | white, foreground | `oklch(21.03% 0 0)`, foreground | Popovers, menus, dialogs, and tooltips |
 | Backdrop | `bg-backdrop` | `--backdrop` | black at 50% | black at 60% | Content dimming behind overlays |
-| Muted content | `text-muted` | `--muted` | `oklch(0.5517 0.0138 285.94)` | `oklch(70.5% 0.015 286.067)` | Supporting text and secondary icons |
-| Neutral action | `bg-default text-default-foreground` | `--default`, `--default-foreground` | `oklch(94% 0.001 286.375)`, eclipse | `oklch(27.4% 0.006 286.033)`, snow | Neutral controls and selected states |
-| Accent | `bg-accent text-accent-foreground` | `--accent`, `--accent-foreground` | `oklch(0.6204 0.195 253.83)`, snow | same as light | Primary actions, focus, and emphasis |
-| Success | `bg-success text-success-foreground` | `--success`, `--success-foreground` | `oklch(0.7329 0.1935 150.81)`, eclipse | same as light | Positive outcomes and completed states |
-| Warning | `bg-warning text-warning-foreground` | `--warning`, `--warning-foreground` | `oklch(0.7819 0.1585 72.33)`, eclipse | `oklch(0.8203 0.1388 76.34)`, eclipse | Caution and attention |
-| Danger | `bg-danger text-danger-foreground` | `--danger`, `--danger-foreground` | `oklch(0.6532 0.2328 25.74)`, snow | `oklch(0.594 0.1967 24.63)`, snow | Errors and destructive actions |
-| Field | `bg-field text-field-foreground` | `--field-background`, `--field-foreground` | white, eclipse | eclipse, foreground | Inputs and interactive fields |
-| Border | `border-border` | `--border` | `oklch(90% 0.004 286.32)` | `oklch(28% 0.006 286.033)` | Component boundaries |
-| Separator | `border-separator` | `--separator` | `oklch(92% 0.004 286.32)` | `oklch(25% 0.006 286.033)` | Quiet structural dividers |
+| Muted content | `text-muted` | `--muted` | `oklch(52.4% 0 0)` | `oklch(70.5% 0 0)` | Supporting text and secondary icons |
+| Neutral action | `bg-default text-default-foreground` | `--default`, `--default-foreground` | `oklch(94% 0 0)`, foreground | `oklch(27.4% 0 0)`, `oklch(99.11% 0 0)` | Neutral controls and selected states |
+| Accent | `bg-accent text-accent-foreground` | `--accent`, `--accent-foreground` | `oklch(0 0 0)`, `oklch(99.11% 0 0)` | `oklch(0.9848 0 0)`, `oklch(15% 0 0)` | Primary actions, focus, and selection |
+| Success | `bg-success text-success-foreground` | `--success`, `--success-foreground` | `oklch(0.53 0.1355 153.06)`, near-white | `oklch(0.6514 0.1321 156.22)`, near-black | Positive outcomes and completed states |
+| Warning | `bg-warning text-warning-foreground` | `--warning`, `--warning-foreground` | `oklch(0.8446 0.1525 80.6)`, near-black | `oklch(0.8803 0.1348 86.06)`, near-black | Caution and attention |
+| Danger | `bg-danger text-danger-foreground` | `--danger`, `--danger-foreground` | `oklch(0.573 0.2249 21.97)`, near-white | `oklch(0.7044 0.1872 23.19)`, near-black | Errors and destructive actions |
+| Field | `bg-field text-field-foreground` | `--field-background`, `--field-foreground` | white, foreground | `oklch(21.03% 0 0)`, foreground | Inputs and interactive fields |
+| Border | `border-border` | `--border` | `oklch(90% 0 0)` | `oklch(28% 0 0)` | Component boundaries |
+| Separator | `border-separator` | `--separator` | `oklch(92% 0 0)` | `oklch(25% 0 0)` | Quiet structural dividers |
 
 Hover, focus, soft, inverse, and secondary or tertiary border colors are derived with `color-mix()`. Use utilities such as `bg-accent-hover`, `bg-accent-soft`, `text-accent-soft-foreground`, `border-border-secondary`, and `border-separator-secondary` instead of recreating those formulas.
 
-**Accessibility override:** HeroUI's default light `--muted` (`oklch(0.5517 0.0138 285.94)`) measures 4.43:1 on the canvas, below WCAG AA 4.5:1. `globals.css` darkens it to `oklch(0.52 0.0138 285.94)` (5.06:1) for light mode only; dark mode keeps the default. Supporting text keeps using `text-muted`.
+**Accessibility overrides (WCAG 2.2 AA, required by PRODUCT.md):** the Uber export leaves light `--muted` at `oklch(55.17% 0 0)` (4.42:1 on the canvas) and light `--success` at `oklch(0.6277 0.1604 153.06)` (3.12:1 with its foreground). `globals.css` sets `--muted: oklch(52.4% 0 0)` (≥4.5:1 on every light surface, down to `surface-tertiary`) and `--success: oklch(0.53 0.1355 153.06)` (4.7:1). Every other exported pair already passes. Any change to these tokens is re-measured against AA before it ships.
 
 ## Typography
 
@@ -99,18 +100,18 @@ The spacing base is `--spacing: 0.25rem`, giving the system a 4px rhythm through
 
 ## Shapes
 
-The base radius is `--radius: 0.5rem` (8px). The default field radius is `--field-radius: calc(var(--radius) * 1.5)` (12px).
+The base radius is `--radius: 0.25rem` (4px). The field radius is `--field-radius: 0.25rem` (4px), the same as the base: fields and buttons share one corner.
 
-| Utility | Formula | Default value |
+| Utility | Formula | Value |
 | --- | --- | --- |
-| `rounded-xs` | `calc(var(--radius) * 0.25)` | 2px |
-| `rounded-sm` | `calc(var(--radius) * 0.5)` | 4px |
-| `rounded-md` | `calc(var(--radius) * 0.75)` | 6px |
-| `rounded-lg` | `calc(var(--radius) * 1)` | 8px |
-| `rounded-xl` | `calc(var(--radius) * 1.5)` | 12px |
-| `rounded-2xl` | `calc(var(--radius) * 2)` | 16px |
-| `rounded-3xl` | `calc(var(--radius) * 3)` | 24px |
-| `rounded-4xl` | `calc(var(--radius) * 4)` | 32px |
+| `rounded-xs` | `calc(var(--radius) * 0.25)` | 1px |
+| `rounded-sm` | `calc(var(--radius) * 0.5)` | 2px |
+| `rounded-md` | `calc(var(--radius) * 0.75)` | 3px |
+| `rounded-lg` | `calc(var(--radius) * 1)` | 4px |
+| `rounded-xl` | `calc(var(--radius) * 1.5)` | 6px |
+| `rounded-2xl` | `calc(var(--radius) * 2)` | 8px |
+| `rounded-3xl` | `calc(var(--radius) * 3)` | 12px |
+| `rounded-4xl` | `calc(var(--radius) * 4)` | 16px |
 
 Use the scale consistently. Inner media and nested surfaces should have a visibly related, usually smaller, radius than their parent.
 
@@ -161,7 +162,9 @@ Use the scale consistently. Inner media and nested surfaces should have a visibl
 
 ## Source of Truth
 
-- Default theme variables: https://github.com/heroui-inc/heroui/blob/v3/packages/styles/themes/default/variables.css
+- Applied theme: `src/app/globals.css` (Uber preset, exported with the Theme Builder's own generator, plus the AA overrides above)
+- Theme Builder: https://heroui.com/themes
+- Default theme variables (derived tokens the preset does not set): https://github.com/heroui-inc/heroui/blob/v3/packages/styles/themes/default/variables.css
 - Tailwind token mappings: https://github.com/heroui-inc/heroui/blob/v3/packages/styles/themes/shared/theme.css
 - Component documentation: https://heroui.com/docs/react/components
 - Colors: https://heroui.com/docs/react/getting-started/colors
