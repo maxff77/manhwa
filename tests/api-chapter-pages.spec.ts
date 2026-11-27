@@ -60,6 +60,8 @@ test("GET pages devuelve el manifiesto con Páginas 0-based, anterior y siguient
   ]);
   expect(body.prevChapter).toEqual({ externalId: "capitulo-1", number: 1 });
   expect(body.nextChapter).toEqual({ externalId: "capitulo-3", number: 3 });
+  // La lista entera alimenta el selector de Capítulos del lector.
+  expect(body.chapters.map((c: { number: number }) => c.number)).toEqual([1, 2, 3]);
 });
 
 test("el primer Capítulo no tiene anterior y el último no tiene siguiente", async ({ request }) => {

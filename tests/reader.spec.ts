@@ -142,7 +142,7 @@ test("anterior y siguiente navegan entre Capítulos y el final ofrece el siguien
     });
 
     await page.goto("/series/academia-de-la-ascension/capitulo/capitulo-2");
-    await expect(page.getByTestId("lector-posicion")).toContainText("Cap. 2");
+    await expect(page.getByTestId("lector-posicion")).toContainText("Capítulo 2 ");
 
     // El final del Capítulo ofrece el siguiente y navega a él.
     const siguiente = page.getByTestId("capitulo-siguiente");
@@ -153,7 +153,7 @@ test("anterior y siguiente navegan entre Capítulos y el final ofrece el siguien
     );
     await siguiente.click();
     await expect(page).toHaveURL(/capitulo\/capitulo-3$/);
-    await expect(page.getByTestId("lector-posicion")).toContainText("Cap. 3");
+    await expect(page.getByTestId("lector-posicion")).toContainText("Capítulo 3 ");
 
     // El último no ofrece siguiente: vuelve a la Serie. Y el anterior regresa.
     await expect(page.getByTestId("capitulo-siguiente")).toHaveCount(0);
@@ -161,7 +161,29 @@ test("anterior y siguiente navegan entre Capítulos y el final ofrece el siguien
     await anterior.scrollIntoViewIfNeeded();
     await anterior.click();
     await expect(page).toHaveURL(/capitulo\/capitulo-2$/);
-    await expect(page.getByTestId("lector-posicion")).toContainText("Cap. 2");
+    await expect(page.getByTestId("lector-posicion")).toContainText("Capítulo 2 ");
+  } finally {
+    await images.close();
+  }
+});
+
+test("la lista de Capítulos marca el actual y salta a otro", async ({ page }) => {
+  const images = await startImageFixture();
+  try {
+    const { chapters } = await serieConLector(images);
+    await prisma.page.create({
+      data: { chapterId: chapters[2].id, position: 0, sourceUrl: images.url("/academia/capitulo-3/0.png") },
+    });
+    await page.goto("/series/academia-de-la-ascension/capitulo/capitulo-2");
+
+    await page.getByRole("button", { name: /ver todos los Capítulos/ }).click();
+    const lista = page.getByRole("dialog");
+    await expect(lista.locator("[aria-current='page']")).toHaveText("Capítulo 2");
+    await lista.getByRole("link", { name: "Capítulo 3", exact: true }).click();
+
+    await expect(page).toHaveURL(/capitulo\/capitulo-3$/);
+    await expect(page.getByTestId("lector-posicion")).toContainText("Capítulo 3 ");
+    await expect(page.getByRole("dialog")).toHaveCount(0);
   } finally {
     await images.close();
   }

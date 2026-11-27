@@ -63,19 +63,16 @@ export async function GET(_request: Request, { params }: Params) {
     orderBy: { position: "asc" },
     select: { id: true, position: true, sourceUrl: true },
   });
-  // Vecinos por número dentro de la misma Serie y Fuente (identidad completa).
-  const [prev, next] = await Promise.all([
-    prisma.chapter.findFirst({
-      where: { seriesId: serie.id, sourceId: link.sourceId, number: { lt: chapter.number } },
-      orderBy: { number: "desc" },
-      select: { externalId: true, number: true },
-    }),
-    prisma.chapter.findFirst({
-      where: { seriesId: serie.id, sourceId: link.sourceId, number: { gt: chapter.number } },
-      orderBy: { number: "asc" },
-      select: { externalId: true, number: true },
-    }),
-  ]);
+  // Lista completa para el selector del lector; los vecinos salen de ella
+  // (misma Serie y Fuente: identidad completa).
+  const chapters = await prisma.chapter.findMany({
+    where: { seriesId: serie.id, sourceId: link.sourceId },
+    orderBy: { number: "asc" },
+    select: { externalId: true, number: true },
+  });
+  const at = chapters.findIndex((c) => c.externalId === externalId);
+  const prev = chapters[at - 1] ?? null;
+  const next = chapters[at + 1] ?? null;
 
   return NextResponse.json(
     {
@@ -89,6 +86,7 @@ export async function GET(_request: Request, { params }: Params) {
       pages: pages.map((page) => ({ id: page.id, position: page.position, url: page.sourceUrl })),
       prevChapter: prev,
       nextChapter: next,
+      chapters,
     },
     { headers: { "Cache-Control": "no-store" } },
   );

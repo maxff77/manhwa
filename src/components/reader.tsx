@@ -1,9 +1,10 @@
 "use client";
 
-import { Button, Spinner } from "@heroui/react";
+import { Button, Drawer, Spinner } from "@heroui/react";
 import { buttonVariants } from "@heroui/styles";
 import NextLink from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { chapterNumber } from "@/lib/format";
 
 interface ManifestPage {
@@ -21,6 +22,34 @@ interface Manifest {
   pages: ManifestPage[];
   prevChapter: ChapterRef | null;
   nextChapter: ChapterRef | null;
+  chapters: ChapterRef[];
+}
+
+const BACK = "m15 18-6-6 6-6";
+const FORWARD = "m9 18 6-6-6-6";
+const GRID = "M4 4h6v6H4zm10 0h6v6h-6zM4 14h6v6H4zm10 0h6v6h-6z";
+
+function Icon({ d }: { d: string }) {
+  return (
+    <svg
+      aria-hidden="true"
+      className="size-5 shrink-0"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="1.75"
+      viewBox="0 0 24 24"
+    >
+      <path d={d} />
+    </svg>
+  );
+}
+
+/** Centra el Capítulo actual en la lista sin mover la ventana (scrollIntoView movería el lector). */
+function centerInList(el: HTMLElement | null) {
+  const box = el?.closest<HTMLElement>(".drawer__body");
+  if (el && box) box.scrollTop = el.offsetTop - box.clientHeight / 2 + el.offsetHeight / 2;
 }
 
 /** Ventana B aprobada en el prototipo (#5): [actual-2, actual+5] con src. */
@@ -109,6 +138,10 @@ export function Reader({ slug, externalId }: { slug: string; externalId: string 
   const readerDb = useRef<IDBDatabase | null>(null);
   /** Mientras se restaura la posición no se guarda nada: ver el efecto de scroll. */
   const restoring = useRef(true);
+  /** Barras visibles: se ocultan al bajar leyendo y vuelven al subir, al tocar o al llegar a un extremo. */
+  const [chrome, setChrome] = useState(true);
+  const [listOpen, setListOpen] = useState(false);
+  const lastY = useRef(0);
 
   useEffect(() => {
     let alive = true;
@@ -122,6 +155,8 @@ export function Reader({ slug, externalId }: { slug: string; externalId: string 
     setFailed(false);
     setCurrent(0);
     setAttempts({});
+    setChrome(true);
+    setListOpen(false);
     window.scrollTo(0, 0);
     fetch(`/api/series/${slug}/chapters/${encodeURIComponent(externalId)}/pages`)
       .then((res) => {
@@ -172,6 +207,8 @@ export function Reader({ slug, externalId }: { slug: string; externalId: string 
       requestAnimationFrame(() => {
         const fig = saved ? figures.current[saved.page] : null;
         if (fig) window.scrollTo(0, fig.offsetTop + (saved!.off || 0));
+        // El salto de la restauración no cuenta como «bajar leyendo».
+        lastY.current = window.scrollY;
         setCurrent(indexAt(window.scrollY));
         restoring.current = false;
       });
@@ -187,7 +224,13 @@ export function Reader({ slug, externalId }: { slug: string; externalId: string 
       ticking = true;
       requestAnimationFrame(() => {
         ticking = false;
-        setCurrent(indexAt(window.scrollY));
+        const y = window.scrollY;
+        const dy = y - lastY.current;
+        lastY.current = y;
+        const atEdge = y < 80 || y + window.innerHeight > document.documentElement.scrollHeight - 240;
+        if (atEdge || dy < -6) setChrome(true);
+        else if (dy > 6) setChrome(false);
+        setCurrent(indexAt(y));
         // Se guarda en el mismo frame que actualiza el contador: con un
         // throttle de 300 ms una recarga inmediata perdía la última Página.
         save();
@@ -231,23 +274,48 @@ export function Reader({ slug, externalId }: { slug: string; externalId: string 
     setAttempts((prev) => ({ ...prev, [p.id]: { tries: (prev[p.id]?.tries ?? 0) + 1, bust: prev[p.id]?.bust ?? 0 } }));
   };
 
+  const { prevChapter, nextChapter, chapters } = manifest;
+  const number = chapterNumber.format(manifest.chapter.number);
+  const seriesHref = `/series/${slug}`;
+  const step = "max-sm:w-12 max-sm:px-0";
+  const bar = "z-20 border-separator bg-background/90 backdrop-blur transition-transform duration-200 ease-out motion-reduce:transition-none";
+
   return (
     <div className="min-h-dvh bg-background">
-      <header className="sticky top-0 z-20 border-b border-separator bg-background/90 backdrop-blur">
-        <div className="mx-auto flex h-12 w-full max-w-3xl items-center justify-between gap-3 px-4">
+      <header
+        onFocus={() => setChrome(true)}
+        className={`sticky top-0 border-b ${bar} ${chrome ? "" : "-translate-y-full"}`}
+      >
+        <div className="mx-auto flex h-14 w-full max-w-3xl items-center gap-1 px-2">
           <NextLink
-            href={`/series/${slug}`}
-            className="min-w-0 truncate text-sm font-medium text-foreground"
+            href={seriesHref}
+            aria-label="Volver a la Serie"
+            className={buttonVariants({ variant: "ghost", size: "lg", isIconOnly: true })}
           >
-            {manifest.series.title}
+            <Icon d={BACK} />
           </NextLink>
-          <p className="shrink-0 text-sm text-muted tabular-nums" data-testid="lector-posicion">
-            Cap. {chapterNumber.format(manifest.chapter.number)} · {current + 1}/{pages.length}
-          </p>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium text-foreground">{manifest.series.title}</p>
+            <p className="text-xs text-muted tabular-nums" data-testid="lector-posicion">
+              Capítulo {number} · {current + 1}/{pages.length}
+            </p>
+          </div>
+          <ThemeToggle />
         </div>
+        <div
+          aria-hidden="true"
+          className="absolute inset-x-0 -bottom-px h-0.5 origin-left bg-accent transition-transform duration-150 motion-reduce:transition-none"
+          style={{ transform: `scaleX(${pages.length ? (current + 1) / pages.length : 0})` }}
+        />
       </header>
 
-      <main className="mx-auto w-full max-w-3xl">
+      <main
+        className="mx-auto w-full max-w-3xl"
+        // Tocar la lectura muestra u oculta las barras; los botones de una Página rota no cuentan.
+        onClick={(event) => {
+          if (!(event.target as Element).closest("a, button")) setChrome((on) => !on);
+        }}
+      >
         {pages.map((p, i) => {
           const want = i >= current - BEHIND && i <= current + AHEAD;
           const { tries, bust } = attempts[p.id] ?? { tries: 0, bust: 0 };
@@ -307,34 +375,135 @@ export function Reader({ slug, externalId }: { slug: string; externalId: string 
           );
         })}
 
-        <nav aria-label="Navegación de Capítulos" className="flex flex-col items-center gap-4 px-4 py-14">
-          <p className="text-sm text-muted">Fin del Capítulo {chapterNumber.format(manifest.chapter.number)}</p>
-          <div className="flex flex-wrap justify-center gap-3">
-            {manifest.prevChapter ? (
+        <nav aria-label="Fin del Capítulo" className="mx-auto flex max-w-sm flex-col gap-3 px-4 pt-14 pb-28">
+          <p className="text-center text-sm text-muted">
+            {nextChapter ? `Fin del Capítulo ${number}` : "Es el último Capítulo publicado"}
+          </p>
+          {nextChapter ? (
+            <NextLink
+              href={chapterHref(nextChapter)}
+              className={buttonVariants({ size: "lg", fullWidth: true })}
+              data-testid="capitulo-siguiente"
+            >
+              Siguiente: Capítulo {chapterNumber.format(nextChapter.number)}
+              <Icon d={FORWARD} />
+            </NextLink>
+          ) : (
+            <NextLink href={seriesHref} className={buttonVariants({ size: "lg", fullWidth: true })}>
+              Volver a la Serie
+            </NextLink>
+          )}
+          <div className="flex gap-3">
+            {prevChapter ? (
               <NextLink
-                href={chapterHref(manifest.prevChapter)}
-                className={buttonVariants({ variant: "secondary", size: "lg" })}
+                href={chapterHref(prevChapter)}
+                className={buttonVariants({ variant: "secondary", size: "lg", className: "flex-1" })}
                 data-testid="capitulo-anterior"
               >
-                ← Capítulo {chapterNumber.format(manifest.prevChapter.number)}
+                <Icon d={BACK} />
+                Capítulo {chapterNumber.format(prevChapter.number)}
               </NextLink>
             ) : null}
-            {manifest.nextChapter ? (
-              <NextLink
-                href={chapterHref(manifest.nextChapter)}
-                className={buttonVariants({ size: "lg" })}
-                data-testid="capitulo-siguiente"
-              >
-                Siguiente Capítulo →
-              </NextLink>
-            ) : (
-              <NextLink href={`/series/${slug}`} className={buttonVariants({ size: "lg" })}>
-                Volver a la Serie
-              </NextLink>
-            )}
+            <Button variant="secondary" size="lg" className="flex-1" onPress={() => setListOpen(true)}>
+              <Icon d={GRID} />
+              Capítulos
+            </Button>
           </div>
+          {nextChapter ? (
+            <NextLink
+              href={seriesHref}
+              className="mx-auto mt-2 rounded-sm text-sm text-muted underline underline-offset-4 hover:text-foreground"
+            >
+              Volver a la Serie
+            </NextLink>
+          ) : null}
         </nav>
       </main>
+
+      <nav
+        aria-label="Capítulos"
+        onFocus={() => setChrome(true)}
+        className={`fixed inset-x-0 bottom-0 border-t pb-[env(safe-area-inset-bottom)] ${bar} ${chrome ? "" : "translate-y-full"}`}
+      >
+        {/* En el móvil anterior y siguiente son flechas (el nombre accesible sigue ahí): el centro necesita el sitio. */}
+        <div className="mx-auto flex h-16 w-full max-w-3xl items-center gap-2 px-3">
+          {prevChapter ? (
+            <NextLink
+              href={chapterHref(prevChapter)}
+              className={buttonVariants({ variant: "secondary", size: "lg", className: step })}
+            >
+              <Icon d={BACK} />
+              <span className="max-sm:sr-only">Anterior</span>
+            </NextLink>
+          ) : (
+            <Button variant="secondary" size="lg" isDisabled className={step}>
+              <Icon d={BACK} />
+              <span className="max-sm:sr-only">Anterior</span>
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="lg"
+            className="min-w-0 flex-1"
+            aria-label={`Capítulo ${number}: ver todos los Capítulos`}
+            onPress={() => setListOpen(true)}
+          >
+            <Icon d={GRID} />
+            <span className="truncate tabular-nums">Capítulo {number}</span>
+          </Button>
+          {nextChapter ? (
+            <NextLink href={chapterHref(nextChapter)} className={buttonVariants({ size: "lg", className: step })}>
+              <span className="max-sm:sr-only">Siguiente</span>
+              <Icon d={FORWARD} />
+            </NextLink>
+          ) : (
+            <Button size="lg" isDisabled className={step}>
+              <span className="max-sm:sr-only">Siguiente</span>
+              <Icon d={FORWARD} />
+            </Button>
+          )}
+        </div>
+      </nav>
+
+      <Drawer.Backdrop isOpen={listOpen} onOpenChange={setListOpen}>
+        <Drawer.Content placement="bottom">
+          <Drawer.Dialog className="sm:mx-auto sm:max-w-lg">
+            <Drawer.Handle />
+            <Drawer.CloseTrigger aria-label="Cerrar" />
+            <Drawer.Header>
+              <Drawer.Heading>Capítulos</Drawer.Heading>
+              <p className="text-sm text-muted tabular-nums">
+                {manifest.series.title} · {chapters.length} publicados
+              </p>
+            </Drawer.Header>
+            <Drawer.Body>
+              <ol className="relative grid grid-cols-5 gap-2 p-1 sm:grid-cols-6">
+                {chapters.map((c) => {
+                  const here = c.externalId === externalId;
+                  return (
+                    <li key={c.externalId}>
+                      <NextLink
+                        href={chapterHref(c)}
+                        prefetch={false}
+                        ref={here ? centerInList : undefined}
+                        aria-current={here ? "page" : undefined}
+                        className={`grid h-11 place-items-center rounded-lg text-sm tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-overlay ${
+                          here
+                            ? "bg-accent font-semibold text-accent-foreground"
+                            : "bg-surface-secondary text-foreground hover:bg-surface-tertiary"
+                        }`}
+                      >
+                        <span className="sr-only">Capítulo </span>
+                        {chapterNumber.format(c.number)}
+                      </NextLink>
+                    </li>
+                  );
+                })}
+              </ol>
+            </Drawer.Body>
+          </Drawer.Dialog>
+        </Drawer.Content>
+      </Drawer.Backdrop>
     </div>
   );
 }
