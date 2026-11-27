@@ -24,6 +24,15 @@ const csp = [
 ].join("; ");
 
 const nextConfig: NextConfig = {
+  // El celular abre la app por la IP de la LAN. Sin esto, Next rechaza el
+  // upgrade del WebSocket de HMR con una respuesta que no es HTTP (medido:
+  // `Origin: http://<ip>:3001` → HTTP/0.9; `Origin: http://localhost:3001`
+  // → 101). El cliente de Turbopack espera ese canal y la ruta nunca hidrata:
+  // el lector se queda en «Cargando Capítulo» aunque la API responda 200.
+  // La IP LAN es DHCP (lease ~2 h); el comodín `**.localhost` ya está permitido
+  // por defecto pero no cubre IPs numéricas. `*.*.*.*` coincide con cualquier
+  // IPv4 que el router asigne sin tener que editar la config cada vez.
+  allowedDevOrigins: ["*.*.*.*"],
   // Prisma 7's driver adapter carries Node built-ins; keep it out of the bundle.
   serverExternalPackages: ["@prisma/adapter-pg", "pg"],
   async headers() {
