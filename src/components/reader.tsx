@@ -28,6 +28,8 @@ interface Manifest {
 const BACK = "m15 18-6-6 6-6";
 const FORWARD = "m9 18 6-6-6-6";
 const GRID = "M4 4h6v6H4zm10 0h6v6h-6zM4 14h6v6H4zm10 0h6v6h-6z";
+const HOME =
+  "M3 10a2 2 0 0 1 .7-1.53l7-6a2 2 0 0 1 2.6 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM9 21v-8a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v8";
 
 function Icon({ d }: { d: string }) {
   return (
@@ -287,19 +289,29 @@ export function Reader({ slug, externalId }: { slug: string; externalId: string 
         className={`sticky top-0 border-b ${bar} ${chrome ? "" : "-translate-y-full"}`}
       >
         <div className="mx-auto flex h-14 w-full max-w-3xl items-center gap-1 px-2">
+          {/* Todo el bloque vuelve a la Serie: la flecha sola era un blanco de 44 px fácil de fallar. */}
           <NextLink
             href={seriesHref}
-            aria-label="Volver a la Serie"
+            className="flex h-11 min-w-0 flex-1 items-center gap-1 rounded-3xl pr-3 outline-none transition-colors duration-100 hover:bg-default focus-visible:status-focused active:bg-default motion-reduce:transition-none md:h-10"
+          >
+            <span className="grid w-11 shrink-0 place-items-center md:w-10">
+              <Icon d={BACK} />
+            </span>
+            <span className="min-w-0">
+              <span className="sr-only">Volver a la Serie: </span>
+              <span className="block truncate text-sm font-medium text-foreground">{manifest.series.title}</span>
+              <span className="block text-xs text-muted tabular-nums" data-testid="lector-posicion">
+                Capítulo {number} · {current + 1}/{pages.length}
+              </span>
+            </span>
+          </NextLink>
+          <NextLink
+            href="/"
+            aria-label="Inicio"
             className={buttonVariants({ variant: "ghost", size: "lg", isIconOnly: true })}
           >
-            <Icon d={BACK} />
+            <Icon d={HOME} />
           </NextLink>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-foreground">{manifest.series.title}</p>
-            <p className="text-xs text-muted tabular-nums" data-testid="lector-posicion">
-              Capítulo {number} · {current + 1}/{pages.length}
-            </p>
-          </div>
           <ThemeToggle />
         </div>
         <div

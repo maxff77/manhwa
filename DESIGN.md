@@ -39,7 +39,7 @@ Use `class="light"` or `data-theme="light"` for light mode and `class="dark"` or
 
 - `next-themes` writes the `light`/`dark` class on `<html>`, follows the system preference by default and keeps the choice in the browser. The header exposes a single theme toggle.
 - `Geist` is loaded with `next/font` and exposed as `--font-sans`; HeroUI components inherit it. Do not add a second type system.
-- The app shell is a top bar over a `max-w-6xl` content column: wordmark (the home link), a theme toggle, and a skip link before them. Primary navigation appears only when a second real destination exists; never render a nav whose only item points at the current page. On mobile the bar stays one row; no drawer or second navigation model until a screen needs it.
+- The app shell is a top bar (`SiteHeader`) over a `max-w-6xl` content column, with a skip link before it. Every screen names its way up: the root (Catálogo) shows the wordmark and the theme toggle; a screen below it shows «‹ Parent» in place of the wordmark (the Serie shows «‹ Catálogo»). The reader keeps its own bar: the whole «‹ Serie title · Capítulo N · page/total» block is one link back to the Serie, then Inicio (house icon) and the theme toggle. Primary navigation appears only when a second real destination exists; never render a nav whose only item points at the current page. On mobile the bar stays one row; no drawer or second navigation model until a screen needs it.
 - Use semantic Tailwind utilities (`bg-background`, `bg-surface`, `text-muted`, `border-separator`) and HeroUI components. Raw neutral palette classes and hardcoded colors are out.
 - Text in the product is Spanish; headings are sentence case and use the working name «Manhwa».
 

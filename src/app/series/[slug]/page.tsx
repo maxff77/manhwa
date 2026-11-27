@@ -5,8 +5,8 @@ import NextLink from "next/link";
 import { notFound } from "next/navigation";
 import { Fragment } from "react";
 
+import { SiteHeader } from "@/components/site-header";
 import { Synopsis } from "@/components/synopsis";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { syncSeries } from "@/ingest/catalog";
 import { prisma } from "@/lib/db";
 import { STATUS_LABEL, chapterNumber, genreLabel, timeAgo } from "@/lib/format";
@@ -76,21 +76,7 @@ export default async function SeriesPage({
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <a
-        href="#contenido"
-        className="sr-only rounded-md px-3 py-2 text-sm font-medium focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:bg-surface focus:text-foreground focus:shadow-overlay"
-      >
-        Saltar al contenido
-      </a>
-
-      <header className="border-b border-separator">
-        <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
-          <NextLink href="/" className="text-lg font-semibold tracking-tight text-foreground">
-            Manhwa
-          </NextLink>
-          <ThemeToggle />
-        </div>
-      </header>
+      <SiteHeader back={{ href: "/", label: "Catálogo" }} />
 
       <main id="contenido" className="flex flex-1 flex-col">
         {/* La cabecera vive siempre en el tema oscuro: el color lo pone la portada,
