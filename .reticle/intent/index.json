@@ -7,6 +7,12 @@
       "subject": "drive-el-bot-n-de-tema-cambia-la-app-al"
     },
     {
+      "id": "flow:drive-en-la-p-gina-de-serie-antiguos-primero-invierte",
+      "statement": "En la página de Serie, «Antiguos primero» invierte el calendario de Cap…",
+      "status": "proposed",
+      "subject": "drive-en-la-p-gina-de-serie-antiguos-pri"
+    },
+    {
       "id": "flow:home-filtro-generos",
       "statement": "A visitor marks one or more genres on the home. The home shows only Ser…",
       "status": "proposed",
@@ -23,6 +29,18 @@
       "statement": "A visitor opens a Serie. The page shows the full Chapter list and each…",
       "status": "proved",
       "subject": "serie-sync-y-enlace-al-lector"
+    },
+    {
+      "id": "inline:en-la-p-gina-de-serie-antiguos-primero-invierte-a8cbcca7",
+      "statement": "En la página de Serie, «Antiguos primero» invierte el calendario de Cap…",
+      "status": "proved",
+      "subject": "series"
+    },
+    {
+      "id": "inline:en-la-p-gina-de-serie-empezar-a-leer-lleva-al-ca-635c9a69",
+      "statement": "En la página de Serie, «Empezar a leer» lleva al Capítulo 1 de la Serie.",
+      "status": "proved",
+      "subject": "series"
     },
     {
       "id": "inline:el-bot-n-de-tema-cambia-la-app-al-modo-oscuro-de-24b68ba8",

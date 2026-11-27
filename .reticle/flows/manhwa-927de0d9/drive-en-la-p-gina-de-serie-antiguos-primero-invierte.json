@@ -1,0 +1,60 @@
+{
+  "version": 2,
+  "name": "drive-en-la-p-gina-de-serie-antiguos-primero-invierte",
+  "projectId": "manhwa-927de0d9",
+  "createdAt": 1795751226343,
+  "steps": [
+    {
+      "tool": "reticle_act",
+      "anchor": {
+        "kind": "role",
+        "role": "link",
+        "name": "Antiguos primero",
+        "within": [
+          "navigation",
+          "region"
+        ]
+      },
+      "args": {},
+      "action": "click",
+      "source": {
+        "file": "src/app/series/[slug]/page.tsx",
+        "line": 332
+      },
+      "expect": {
+        "kind": "allOf",
+        "predicates": [
+          {
+            "kind": "net",
+            "urlContains": "orden=antiguos",
+            "status": 200
+          },
+          {
+            "kind": "route",
+            "pathname": "/series/convirtiendome-en-el-perro-loco-del-clan-cheon-2"
+          }
+        ]
+      },
+      "page": "/series/convirtiendome-en-el-perro-loco-del-clan-cheon-2",
+      "endPage": "/series/convirtiendome-en-el-perro-loco-del-clan-cheon-2?orden=antiguos"
+    }
+  ],
+  "startPath": "/series/convirtiendome-en-el-perro-loco-del-clan-cheon-2",
+  "intent": "En la página de Serie, «Antiguos primero» invierte el calendario de Capítulos y el orden queda en la URL.",
+  "requires": [
+    {
+      "kind": "route",
+      "pathname": "/series/convirtiendome-en-el-perro-loco-del-clan-cheon-2"
+    }
+  ],
+  "ensures": [
+    {
+      "kind": "route",
+      "pathname": "/series/convirtiendome-en-el-perro-loco-del-clan-cheon-2?orden=antiguos"
+    }
+  ],
+  "author": {
+    "agent": "claude-code"
+  },
+  "intentId": "flow:drive-en-la-p-gina-de-serie-antiguos-primero-invierte"
+}

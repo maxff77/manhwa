@@ -1,0 +1,91 @@
+{
+  "version": 2,
+  "name": "drive-a-request-to-orden-antiguos-is-made-and-the-page-series-co",
+  "projectId": "manhwa-927de0d9",
+  "createdAt": 1795751208683,
+  "steps": [
+    {
+      "tool": "reticle_act_sequence",
+      "anchor": {
+        "kind": "role",
+        "role": "link",
+        "name": "Antiguos primero",
+        "within": [
+          "navigation",
+          "region"
+        ]
+      },
+      "steps": [
+        {
+          "tool": "reticle_act",
+          "anchor": {
+            "kind": "role",
+            "role": "link",
+            "name": "Antiguos primero",
+            "within": [
+              "navigation",
+              "region"
+            ]
+          },
+          "args": {},
+          "action": "click",
+          "source": {
+            "file": "src/app/series/[slug]/page.tsx",
+            "line": 332
+          },
+          "expect": {
+            "kind": "allOf",
+            "predicates": [
+              {
+                "kind": "net",
+                "urlContains": "orden=antiguos",
+                "status": 200
+              },
+              {
+                "kind": "route",
+                "pathname": "/series/convirtiendome-en-el-perro-loco-del-clan-cheon-2"
+              }
+            ]
+          }
+        },
+        {
+          "tool": "reticle_act",
+          "anchor": {
+            "kind": "role",
+            "role": "link",
+            "name": "Empezar a leer",
+            "within": [
+              "region"
+            ]
+          },
+          "args": {},
+          "action": "click",
+          "source": {
+            "file": "src/app/series/[slug]/page.tsx",
+            "line": 163
+          }
+        }
+      ],
+      "page": "/series/convirtiendome-en-el-perro-loco-del-clan-cheon-2",
+      "endPage": "/series/convirtiendome-en-el-perro-loco-del-clan-cheon-2?orden=antiguos"
+    }
+  ],
+  "startPath": "/series/convirtiendome-en-el-perro-loco-del-clan-cheon-2",
+  "intent": "A request to orden=antiguos is made and the page moves to /series/convirtiendome-en-el-perro-loco-del-clan-cheon-2",
+  "intentDerived": true,
+  "requires": [
+    {
+      "kind": "route",
+      "pathname": "/series/convirtiendome-en-el-perro-loco-del-clan-cheon-2"
+    }
+  ],
+  "ensures": [
+    {
+      "kind": "route",
+      "pathname": "/series/convirtiendome-en-el-perro-loco-del-clan-cheon-2?orden=antiguos"
+    }
+  ],
+  "author": {
+    "agent": "claude-code"
+  }
+}

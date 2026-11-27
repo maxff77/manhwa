@@ -7,7 +7,7 @@ import { Rail } from "@/components/rail";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
-import { STATUS_LABEL, chapterNumber, genreLabel, shortDate } from "@/lib/format";
+import { STATUS_LABEL, chapterNumber, genreLabel, timeAgo } from "@/lib/format";
 
 // Render por petición: sin esto Next prerenderiza la home en el build con la
 // base del build (.env) y sirve ese HTML aunque el runtime apunte a otra base
@@ -351,20 +351,6 @@ function SeriesItem({ serie, now, eager = false }: { serie: SeriesRow; now: numb
       </span>
     </NextLink>
   );
-}
-
-const relative = new Intl.RelativeTimeFormat("es", { numeric: "auto" });
-
-/** «hace 5 horas», «ayer», «hace 3 días»; a partir de un mes, la fecha. */
-function timeAgo(date: Date, now: number): string {
-  const minutes = Math.round((date.getTime() - now) / 60_000);
-  if (minutes === 0) return "ahora mismo"; // Intl da «este minuto»
-  if (Math.abs(minutes) < 60) return relative.format(minutes, "minute");
-  const hours = Math.round(minutes / 60);
-  if (Math.abs(hours) < 24) return relative.format(hours, "hour");
-  const days = Math.round(hours / 24);
-  if (Math.abs(days) < 30) return relative.format(days, "day");
-  return shortDate.format(date);
 }
 
 /** «1 Serie», «896 Series»: el singular del GLOSSARY. */

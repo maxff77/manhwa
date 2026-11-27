@@ -1,0 +1,21 @@
+{
+  "intents": {
+    "flow:drive-en-la-p-gina-de-serie-antiguos-primero-invierte": {
+      "binding": {
+        "flow": "drive-en-la-p-gina-de-serie-antiguos-primero-invierte"
+      },
+      "declaredAt": 1795751226493,
+      "id": "flow:drive-en-la-p-gina-de-serie-antiguos-primero-invierte",
+      "state": "bound",
+      "statement": "En la página de Serie, «Antiguos primero» invierte el calendario de Capítulos y el orden queda en la URL.",
+      "status": "proposed",
+      "subject": "drive-en-la-p-gina-de-serie-antiguos-pri",
+      "surface": {
+        "flow": "drive-en-la-p-gina-de-serie-antiguos-primero-invierte"
+      },
+      "updatedAt": 1795751226497
+    }
+  },
+  "subject": "drive-en-la-p-gina-de-serie-antiguos-pri",
+  "version": 1
+}

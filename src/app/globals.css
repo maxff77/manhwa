@@ -104,3 +104,18 @@ html.dark {
   --warning-foreground: oklch(15% 0.0404 86.06);
   --accent-soft-foreground: oklch(0.9848 0 0);
 }
+
+/* Página de Serie: el color de la portada inunda la cabecera al cargar. Solo
+   se anima el fondo desenfocado; el texto nunca depende de la animación. */
+@keyframes cover-wash {
+  from {
+    opacity: 0;
+    transform: scale(1.15);
+  }
+}
+
+/* Selección de texto con el acento del tema (negro / casi blanco), no el azul del navegador. */
+::selection {
+  background-color: var(--accent);
+  color: var(--accent-foreground);
+}

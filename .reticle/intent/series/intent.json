@@ -1,0 +1,72 @@
+{
+  "intents": {
+    "inline:en-la-p-gina-de-serie-antiguos-primero-invierte-a8cbcca7": {
+      "binding": {
+        "kind": "allOf",
+        "predicates": [
+          {
+            "kind": "net",
+            "status": 200,
+            "urlContains": "orden=antiguos"
+          },
+          {
+            "kind": "route",
+            "pathname": "/series/convirtiendome-en-el-perro-loco-del-clan-cheon-2"
+          }
+        ]
+      },
+      "declaredAt": 1795751220186,
+      "id": "inline:en-la-p-gina-de-serie-antiguos-primero-invierte-a8cbcca7",
+      "provenBy": {
+        "at": 1795751222157,
+        "grade": "net",
+        "runId": "drive-a96e97cb0b9bd878",
+        "verdictId": "reticle_act_and_wait:1795751222157"
+      },
+      "state": "proved",
+      "statement": "En la página de Serie, «Antiguos primero» invierte el calendario de Capítulos y el orden queda en la URL.",
+      "status": "proved",
+      "subject": "series",
+      "surface": {
+        "files": [
+          "src/app/series/[slug]/page.tsx"
+        ],
+        "route": "/series/convirtiendome-en-el-perro-loco-del-clan-cheon-2"
+      },
+      "updatedAt": 1795751222161
+    },
+    "inline:en-la-p-gina-de-serie-empezar-a-leer-lleva-al-ca-635c9a69": {
+      "binding": {
+        "kind": "allOf",
+        "predicates": [
+          {
+            "kind": "route",
+            "pathname": "/series/convirtiendome-en-el-perro-loco-del-clan-cheon-2/capitulo/1"
+          },
+          {
+            "kind": "net",
+            "urlContains": "/capitulo/1"
+          }
+        ]
+      },
+      "declaredAt": 1795751224809,
+      "id": "inline:en-la-p-gina-de-serie-empezar-a-leer-lleva-al-ca-635c9a69",
+      "provenBy": {
+        "at": 1795751226788,
+        "grade": "net",
+        "runId": "drive-a96e97cb0b9bd878",
+        "verdictId": "reticle_act_and_wait:1795751226788"
+      },
+      "state": "proved",
+      "statement": "En la página de Serie, «Empezar a leer» lleva al Capítulo 1 de la Serie.",
+      "status": "proved",
+      "subject": "series",
+      "surface": {
+        "route": "/series/convirtiendome-en-el-perro-loco-del-clan-cheon-2/capitulo/1"
+      },
+      "updatedAt": 1795751226792
+    }
+  },
+  "subject": "series",
+  "version": 1
+}
