@@ -2,7 +2,18 @@
   "intents": {
     "flow:serie-sync-y-enlace-al-lector": {
       "binding": {
-        "flow": "serie-sync-y-enlace-al-lector"
+        "kind": "allOf",
+        "predicates": [
+          {
+            "kind": "route",
+            "pathname": "/series/academia-de-la-ascension/capitulo/capitulo-3"
+          },
+          {
+            "kind": "net",
+            "method": "GET",
+            "urlContains": "/series/academia-de-la-ascension/capitulo/capitulo-3"
+          }
+        ]
       },
       "declaredAt": 1795740433673,
       "id": "flow:serie-sync-y-enlace-al-lector",
@@ -13,7 +24,7 @@
       "surface": {
         "flow": "serie-sync-y-enlace-al-lector"
       },
-      "updatedAt": 1795740504555
+      "updatedAt": 1795744767266
     }
   },
   "subject": "serie-sync-y-enlace-al-lector",
