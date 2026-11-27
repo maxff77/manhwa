@@ -121,6 +121,7 @@ export default async function SeriesPage({ params }: { params: Promise<{ slug: s
                 <li key={chapter.id}>
                   <NextLink
                     href={`/series/${serie.slug}/capitulo/${chapter.externalId}`}
+                    data-testid={`capitulo-${chapter.externalId}`}
                     className="flex items-baseline justify-between gap-4 px-4 py-3 text-sm outline-none hover:bg-surface-secondary focus-visible:status-focused"
                   >
                     <span className="font-medium tabular-nums">

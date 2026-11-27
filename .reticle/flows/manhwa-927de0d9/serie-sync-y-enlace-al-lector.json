@@ -1,0 +1,50 @@
+{
+  "version": 2,
+  "name": "serie-sync-y-enlace-al-lector",
+  "projectId": "manhwa-927de0d9",
+  "createdAt": 1795740504550,
+  "steps": [
+    {
+      "tool": "reticle_act",
+      "anchor": {
+        "kind": "testid",
+        "value": "capitulo-capitulo-3"
+      },
+      "args": {},
+      "action": "click",
+      "source": {
+        "file": "src/app/series/[slug]/page.tsx",
+        "line": 121
+      },
+      "expect": {
+        "kind": "route",
+        "pathname": "/series/academia-de-la-ascension/capitulo/capitulo-3"
+      },
+      "page": "/series/academia-de-la-ascension",
+      "endPage": "/series/academia-de-la-ascension/capitulo/capitulo-3"
+    }
+  ],
+  "startPath": "/series/academia-de-la-ascension",
+  "success": {
+    "kind": "net",
+    "method": "GET",
+    "urlContains": "/series/academia-de-la-ascension/capitulo/capitulo-3"
+  },
+  "intent": "A visitor opens a Serie. The page shows the full Chapter list and each Chapter links to /series/<slug>/capitulo/<externalId>. Clicking a Chapter moves the browser to that reader route.",
+  "requires": [
+    {
+      "kind": "route",
+      "pathname": "/series/academia-de-la-ascension"
+    }
+  ],
+  "ensures": [
+    {
+      "kind": "route",
+      "pathname": "/series/academia-de-la-ascension/capitulo/capitulo-3"
+    }
+  ],
+  "author": {
+    "agent": "claude-code"
+  },
+  "intentId": "flow:serie-sync-y-enlace-al-lector"
+}
