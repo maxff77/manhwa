@@ -1,0 +1,18 @@
+{
+  "intents": {
+    "flow:drive-en-el-lector-tocar-el-t-tulo-de-la-serie-en-la-b": {
+      "declaredAt": 1795802275084,
+      "id": "flow:drive-en-el-lector-tocar-el-t-tulo-de-la-serie-en-la-b",
+      "state": "declared",
+      "statement": "En el lector, tocar el título de la Serie en la barra de arriba vuelve a la página de la Serie.",
+      "status": "proposed",
+      "subject": "drive-en-el-lector-tocar-el-t-tulo-de-la",
+      "surface": {
+        "flow": "drive-en-el-lector-tocar-el-t-tulo-de-la-serie-en-la-b"
+      },
+      "updatedAt": 1795802275087
+    }
+  },
+  "subject": "drive-en-el-lector-tocar-el-t-tulo-de-la",
+  "version": 1
+}

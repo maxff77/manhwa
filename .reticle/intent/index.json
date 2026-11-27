@@ -19,6 +19,18 @@
       "subject": "drive-el-lector-ofrece-botones-fijos-de"
     },
     {
+      "id": "flow:drive-en-el-lector-el-bot-n-de-la-casa-en-la-barra-de",
+      "statement": "En el lector, el botón de la casa en la barra de arriba lleva al inicio.",
+      "status": "proposed",
+      "subject": "drive-en-el-lector-el-bot-n-de-la-casa-e"
+    },
+    {
+      "id": "flow:drive-en-el-lector-tocar-el-t-tulo-de-la-serie-en-la-b",
+      "statement": "En el lector, tocar el título de la Serie en la barra de arriba vuelve…",
+      "status": "proposed",
+      "subject": "drive-en-el-lector-tocar-el-t-tulo-de-la"
+    },
+    {
       "id": "flow:drive-en-la-p-gina-de-serie-antiguos-primero-invierte",
       "statement": "En la página de Serie, «Antiguos primero» invierte el calendario de Cap…",
       "status": "proposed",
@@ -35,6 +47,12 @@
       "statement": "Opening a Chapter on the development server shows its Pages in the vert…",
       "status": "proposed",
       "subject": "drive-opening-a-chapter-on-the-developme"
+    },
+    {
+      "id": "flow:drive-the-reader-offers-a-chapter-list-opening-it-show",
+      "statement": "The reader offers a Chapter list. Opening it shows every Chapter of the…",
+      "status": "proposed",
+      "subject": "drive-the-reader-offers-a-chapter-list-o"
     },
     {
       "id": "flow:home-filtro-generos",
@@ -63,6 +81,12 @@
     {
       "id": "inline:el-lector-ofrece-botones-fijos-de-cap-tulo-anter-eb6b4829",
       "statement": "El lector ofrece botones fijos de Capítulo anterior y siguiente y una l…",
+      "status": "proved",
+      "subject": "series"
+    },
+    {
+      "id": "inline:en-el-lector-tocar-el-t-tulo-de-la-serie-en-la-b-5d130c80",
+      "statement": "En el lector, tocar el título de la Serie en la barra de arriba vuelve…",
       "status": "proved",
       "subject": "series"
     },
@@ -99,6 +123,18 @@
     {
       "id": "inline:el-bot-n-de-tema-cambia-la-app-al-modo-oscuro-de-24b68ba8",
       "statement": "El botón de tema cambia la app al modo oscuro del theme monocromo.",
+      "status": "proved",
+      "subject": "unsorted"
+    },
+    {
+      "id": "inline:en-el-lector-el-bot-n-de-la-casa-en-la-barra-de-84ca2bff",
+      "statement": "En el lector, el botón de la casa en la barra de arriba lleva al inicio.",
+      "status": "proved",
+      "subject": "unsorted"
+    },
+    {
+      "id": "inline:en-la-p-gina-de-una-serie-el-bot-n-cat-logo-de-l-a1a6f0cb",
+      "statement": "En la página de una Serie, el botón «‹ Catálogo» de la barra vuelve al…",
       "status": "proved",
       "subject": "unsorted"
     },

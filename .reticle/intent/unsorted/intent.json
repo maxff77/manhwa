@@ -27,6 +27,78 @@
       },
       "updatedAt": 1795651853040
     },
+    "inline:en-el-lector-el-bot-n-de-la-casa-en-la-barra-de-84ca2bff": {
+      "binding": {
+        "kind": "allOf",
+        "predicates": [
+          {
+            "kind": "route",
+            "pathname": "/"
+          },
+          {
+            "kind": "element",
+            "query": {
+              "name": "Catálogo",
+              "role": "heading"
+            }
+          }
+        ]
+      },
+      "declaredAt": 1795802277628,
+      "id": "inline:en-el-lector-el-bot-n-de-la-casa-en-la-barra-de-84ca2bff",
+      "provenBy": {
+        "at": 1795802278403,
+        "grade": "presence",
+        "runId": "drive-1424b0e7f904b785",
+        "verdictId": "reticle_act_and_wait:1795802278403"
+      },
+      "state": "proved",
+      "statement": "En el lector, el botón de la casa en la barra de arriba lleva al inicio.",
+      "status": "proved",
+      "subject": "unsorted",
+      "surface": {
+        "files": [
+          "src/components/reader.tsx"
+        ]
+      },
+      "updatedAt": 1795802278416
+    },
+    "inline:en-la-p-gina-de-una-serie-el-bot-n-cat-logo-de-l-a1a6f0cb": {
+      "binding": {
+        "kind": "allOf",
+        "predicates": [
+          {
+            "kind": "route",
+            "pathname": "/"
+          },
+          {
+            "kind": "element",
+            "query": {
+              "name": "Catálogo",
+              "role": "heading"
+            }
+          }
+        ]
+      },
+      "declaredAt": 1795802272587,
+      "id": "inline:en-la-p-gina-de-una-serie-el-bot-n-cat-logo-de-l-a1a6f0cb",
+      "provenBy": {
+        "at": 1795802273404,
+        "grade": "presence",
+        "runId": "drive-1424b0e7f904b785",
+        "verdictId": "reticle_act_and_wait:1795802273404"
+      },
+      "state": "proved",
+      "statement": "En la página de una Serie, el botón «‹ Catálogo» de la barra vuelve al inicio.",
+      "status": "proved",
+      "subject": "unsorted",
+      "surface": {
+        "files": [
+          "src/components/site-header.tsx"
+        ]
+      },
+      "updatedAt": 1795802273413
+    },
     "inline:la-app-usa-el-theme-monocromo-uber-de-heroui-el-14befad4": {
       "binding": {
         "kind": "element",

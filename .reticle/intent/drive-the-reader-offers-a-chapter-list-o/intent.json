@@ -1,0 +1,18 @@
+{
+  "intents": {
+    "flow:drive-the-reader-offers-a-chapter-list-opening-it-show": {
+      "declaredAt": 1795802191304,
+      "id": "flow:drive-the-reader-offers-a-chapter-list-opening-it-show",
+      "state": "declared",
+      "statement": "The reader offers a Chapter list. Opening it shows every Chapter of the Serie with the current one marked.",
+      "status": "proposed",
+      "subject": "drive-the-reader-offers-a-chapter-list-o",
+      "surface": {
+        "flow": "drive-the-reader-offers-a-chapter-list-opening-it-show"
+      },
+      "updatedAt": 1795802191309
+    }
+  },
+  "subject": "drive-the-reader-offers-a-chapter-list-o",
+  "version": 1
+}

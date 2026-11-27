@@ -59,6 +59,43 @@
       },
       "updatedAt": 1795798521394
     },
+    "inline:en-el-lector-tocar-el-t-tulo-de-la-serie-en-la-b-5d130c80": {
+      "binding": {
+        "kind": "allOf",
+        "predicates": [
+          {
+            "kind": "route",
+            "pathname": "/series/el-dios-demonio"
+          },
+          {
+            "kind": "element",
+            "query": {
+              "name": "Catálogo",
+              "role": "link"
+            }
+          }
+        ]
+      },
+      "declaredAt": 1795802269270,
+      "id": "inline:en-el-lector-tocar-el-t-tulo-de-la-serie-en-la-b-5d130c80",
+      "provenBy": {
+        "at": 1795802270067,
+        "grade": "presence",
+        "runId": "drive-1424b0e7f904b785",
+        "verdictId": "reticle_act_and_wait:1795802270067"
+      },
+      "state": "proved",
+      "statement": "En el lector, tocar el título de la Serie en la barra de arriba vuelve a la página de la Serie.",
+      "status": "proved",
+      "subject": "series",
+      "surface": {
+        "files": [
+          "src/components/reader.tsx"
+        ],
+        "route": "/series/el-dios-demonio"
+      },
+      "updatedAt": 1795802270077
+    },
     "inline:en-la-p-gina-de-serie-antiguos-primero-invierte-a8cbcca7": {
       "binding": {
         "kind": "allOf",

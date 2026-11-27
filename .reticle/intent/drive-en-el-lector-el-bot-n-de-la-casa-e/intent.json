@@ -1,0 +1,18 @@
+{
+  "intents": {
+    "flow:drive-en-el-lector-el-bot-n-de-la-casa-en-la-barra-de": {
+      "declaredAt": 1795802289884,
+      "id": "flow:drive-en-el-lector-el-bot-n-de-la-casa-en-la-barra-de",
+      "state": "declared",
+      "statement": "En el lector, el botón de la casa en la barra de arriba lleva al inicio.",
+      "status": "proposed",
+      "subject": "drive-en-el-lector-el-bot-n-de-la-casa-e",
+      "surface": {
+        "flow": "drive-en-el-lector-el-bot-n-de-la-casa-en-la-barra-de"
+      },
+      "updatedAt": 1795802289889
+    }
+  },
+  "subject": "drive-en-el-lector-el-bot-n-de-la-casa-e",
+  "version": 1
+}

@@ -1,0 +1,95 @@
+{
+  "version": 2,
+  "name": "drive-en-el-lector-tocar-el-t-tulo-de-la-serie-en-la-b",
+  "projectId": "manhwa-927de0d9",
+  "createdAt": 1795802274770,
+  "steps": [
+    {
+      "tool": "reticle_act",
+      "anchor": {
+        "kind": "role",
+        "role": "link",
+        "name": "Volver a la Serie",
+        "within": [
+          "navigation"
+        ]
+      },
+      "args": {},
+      "action": "click",
+      "source": {
+        "file": "src/components/reader.tsx",
+        "line": 390
+      },
+      "expect": {
+        "kind": "allOf",
+        "predicates": [
+          {
+            "kind": "route",
+            "pathname": "/series/el-dios-demonio"
+          },
+          {
+            "kind": "element",
+            "query": {
+              "role": "link",
+              "name": "Catálogo"
+            }
+          }
+        ]
+      },
+      "timeoutMs": 20000,
+      "page": "/series/el-dios-demonio/capitulo/1",
+      "endPage": "/series/el-dios-demonio"
+    },
+    {
+      "tool": "reticle_act",
+      "anchor": {
+        "kind": "role",
+        "role": "link",
+        "name": "Catálogo"
+      },
+      "args": {},
+      "action": "click",
+      "source": {
+        "file": "src/components/site-header.tsx",
+        "line": 21
+      },
+      "expect": {
+        "kind": "allOf",
+        "predicates": [
+          {
+            "kind": "route",
+            "pathname": "/"
+          },
+          {
+            "kind": "element",
+            "query": {
+              "role": "heading",
+              "name": "Catálogo"
+            }
+          }
+        ]
+      },
+      "timeoutMs": 20000,
+      "page": "/series/el-dios-demonio",
+      "endPage": "/"
+    }
+  ],
+  "startPath": "/series/el-dios-demonio/capitulo/1",
+  "intent": "En el lector, tocar el título de la Serie en la barra de arriba vuelve a la página de la Serie.",
+  "requires": [
+    {
+      "kind": "route",
+      "pathname": "/series/el-dios-demonio/capitulo/1"
+    }
+  ],
+  "ensures": [
+    {
+      "kind": "route",
+      "pathname": "/"
+    }
+  ],
+  "author": {
+    "agent": "claude-code"
+  },
+  "intentId": "flow:drive-en-el-lector-tocar-el-t-tulo-de-la-serie-en-la-b"
+}

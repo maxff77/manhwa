@@ -1,0 +1,59 @@
+{
+  "version": 2,
+  "name": "drive-en-el-lector-el-bot-n-de-la-casa-en-la-barra-de",
+  "projectId": "manhwa-927de0d9",
+  "createdAt": 1795802289430,
+  "steps": [
+    {
+      "tool": "reticle_act",
+      "anchor": {
+        "kind": "role",
+        "role": "link",
+        "name": "Inicio"
+      },
+      "args": {},
+      "action": "click",
+      "source": {
+        "file": "src/components/reader.tsx",
+        "line": 291
+      },
+      "expect": {
+        "kind": "allOf",
+        "predicates": [
+          {
+            "kind": "route",
+            "pathname": "/"
+          },
+          {
+            "kind": "element",
+            "query": {
+              "role": "heading",
+              "name": "Catálogo"
+            }
+          }
+        ]
+      },
+      "timeoutMs": 20000,
+      "page": "/series/el-dios-demonio/capitulo/1",
+      "endPage": "/"
+    }
+  ],
+  "startPath": "/series/el-dios-demonio/capitulo/1",
+  "intent": "En el lector, el botón de la casa en la barra de arriba lleva al inicio.",
+  "requires": [
+    {
+      "kind": "route",
+      "pathname": "/series/el-dios-demonio/capitulo/1"
+    }
+  ],
+  "ensures": [
+    {
+      "kind": "route",
+      "pathname": "/"
+    }
+  ],
+  "author": {
+    "agent": "claude-code"
+  },
+  "intentId": "flow:drive-en-el-lector-el-bot-n-de-la-casa-en-la-barra-de"
+}

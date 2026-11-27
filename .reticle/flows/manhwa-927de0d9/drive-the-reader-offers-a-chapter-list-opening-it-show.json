@@ -1,0 +1,127 @@
+{
+  "version": 2,
+  "name": "drive-the-reader-offers-a-chapter-list-opening-it-show",
+  "projectId": "manhwa-927de0d9",
+  "createdAt": 1795802190088,
+  "steps": [
+    {
+      "tool": "reticle_act_sequence",
+      "anchor": {
+        "kind": "testid",
+        "value": "pagina-10",
+        "source": {
+          "file": "src/components/reader.tsx",
+          "line": 330,
+          "column": 12
+        }
+      },
+      "steps": [
+        {
+          "tool": "reticle_act",
+          "anchor": {
+            "kind": "testid",
+            "value": "pagina-10",
+            "source": {
+              "file": "src/components/reader.tsx",
+              "line": 330,
+              "column": 12
+            }
+          },
+          "args": {},
+          "action": "scrollIntoView",
+          "expect": {
+            "kind": "text",
+            "contains": "Capítulo",
+            "satisfies": {
+              "property": "matchesPattern",
+              "pattern": "Capítulo \\d[\\d,.]* · \\d[\\d,.]*"
+            }
+          }
+        }
+      ],
+      "timeoutMs": 30000,
+      "page": "/series/convirtiendome-en-el-perro-loco-del-clan-cheon-2/capitulo/1"
+    },
+    {
+      "tool": "reticle_act",
+      "anchor": {
+        "kind": "role",
+        "role": "button",
+        "name": "Capítulo 1: ver todos los Capítulos",
+        "within": [
+          "navigation"
+        ]
+      },
+      "args": {},
+      "action": "click",
+      "source": {
+        "file": "src/components/reader.tsx",
+        "line": 429
+      },
+      "expect": {
+        "kind": "element",
+        "query": {
+          "role": "dialog"
+        }
+      },
+      "timeoutMs": 20000,
+      "page": "/series/convirtiendome-en-el-perro-loco-del-clan-cheon-2/capitulo/1"
+    },
+    {
+      "tool": "reticle_act",
+      "anchor": {
+        "kind": "role",
+        "role": "link",
+        "name": "Capítulo 3",
+        "within": [
+          "listitem",
+          "list"
+        ]
+      },
+      "args": {},
+      "action": "click",
+      "source": {
+        "file": "src/components/reader.tsx",
+        "line": 484
+      },
+      "expect": {
+        "kind": "allOf",
+        "predicates": [
+          {
+            "kind": "route",
+            "pathname": "/series/convirtiendome-en-el-perro-loco-del-clan-cheon-2/capitulo/3"
+          },
+          {
+            "kind": "text",
+            "contains": "Capítulo",
+            "satisfies": {
+              "property": "matchesPattern",
+              "pattern": "Capítulo \\d[\\d,.]* ·"
+            }
+          }
+        ]
+      },
+      "timeoutMs": 30000,
+      "page": "/series/convirtiendome-en-el-perro-loco-del-clan-cheon-2/capitulo/1",
+      "endPage": "/series/convirtiendome-en-el-perro-loco-del-clan-cheon-2/capitulo/3"
+    }
+  ],
+  "startPath": "/series/convirtiendome-en-el-perro-loco-del-clan-cheon-2/capitulo/1",
+  "intent": "The reader offers a Chapter list. Opening it shows every Chapter of the Serie with the current one marked.",
+  "requires": [
+    {
+      "kind": "route",
+      "pathname": "/series/convirtiendome-en-el-perro-loco-del-clan-cheon-2/capitulo/1"
+    }
+  ],
+  "ensures": [
+    {
+      "kind": "route",
+      "pathname": "/series/convirtiendome-en-el-perro-loco-del-clan-cheon-2/capitulo/3"
+    }
+  ],
+  "author": {
+    "agent": "claude-code"
+  },
+  "intentId": "flow:drive-the-reader-offers-a-chapter-list-opening-it-show"
+}
