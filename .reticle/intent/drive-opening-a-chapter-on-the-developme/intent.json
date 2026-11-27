@@ -1,0 +1,30 @@
+{
+  "intents": {
+    "flow:drive-opening-a-chapter-on-the-development-server-show": {
+      "declaredAt": 1795789287514,
+      "id": "flow:drive-opening-a-chapter-on-the-development-server-show",
+      "state": "declared",
+      "statement": "Opening a Chapter on the development server shows its Pages in the vertical reader instead of failing to load.",
+      "status": "proposed",
+      "subject": "drive-opening-a-chapter-on-the-developme",
+      "surface": {
+        "flow": "drive-opening-a-chapter-on-the-development-server-show"
+      },
+      "updatedAt": 1795789287517
+    },
+    "flow:drive-opening-a-chapter-on-the-development-server-show-b68633": {
+      "declaredAt": 1795790295872,
+      "id": "flow:drive-opening-a-chapter-on-the-development-server-show-b68633",
+      "state": "declared",
+      "statement": "Opening a Chapter on the development server shows its Pages in the vertical reader instead of failing to load.",
+      "status": "proposed",
+      "subject": "drive-opening-a-chapter-on-the-developme",
+      "surface": {
+        "flow": "drive-opening-a-chapter-on-the-development-server-show-b68633"
+      },
+      "updatedAt": 1795790295874
+    }
+  },
+  "subject": "drive-opening-a-chapter-on-the-developme",
+  "version": 1
+}

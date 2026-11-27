@@ -1,5 +1,64 @@
 {
   "intents": {
+    "inline:a-visitor-opens-a-serie-from-the-home-the-serie-ddf5eda9": {
+      "binding": {
+        "kind": "route",
+        "pathname": "/series/convirtiendome-en-el-perro-loco-del-clan-cheon-2"
+      },
+      "declaredAt": 1795779437577,
+      "id": "inline:a-visitor-opens-a-serie-from-the-home-the-serie-ddf5eda9",
+      "provenBy": {
+        "at": 1795779438905,
+        "grade": "presence",
+        "runId": "drive-02f568426cd40b42",
+        "verdictId": "reticle_act_and_wait:1795779438905"
+      },
+      "state": "proved",
+      "statement": "A visitor opens a Serie from the home. The Serie page shows its Chapter list and each Chapter links to the reader route.",
+      "status": "proved",
+      "subject": "series",
+      "surface": {
+        "files": [
+          "src/app/page.tsx"
+        ],
+        "route": "/series/convirtiendome-en-el-perro-loco-del-clan-cheon-2"
+      },
+      "updatedAt": 1795779438925
+    },
+    "inline:el-lector-ofrece-botones-fijos-de-cap-tulo-anter-eb6b4829": {
+      "binding": {
+        "kind": "allOf",
+        "predicates": [
+          {
+            "kind": "route",
+            "pathname": "/series/los-gemelos-baek/capitulo/164"
+          },
+          {
+            "contains": "Capítulo 164 · 1/",
+            "kind": "text"
+          }
+        ]
+      },
+      "declaredAt": 1795798518898,
+      "id": "inline:el-lector-ofrece-botones-fijos-de-cap-tulo-anter-eb6b4829",
+      "provenBy": {
+        "at": 1795798521379,
+        "grade": "presence",
+        "runId": "drive-1424b0e7f904b785",
+        "verdictId": "reticle_act_and_wait:1795798521379"
+      },
+      "state": "proved",
+      "statement": "El lector ofrece botones fijos de Capítulo anterior y siguiente y una lista de todos los Capítulos, sin tener que llegar al final.",
+      "status": "proved",
+      "subject": "series",
+      "surface": {
+        "files": [
+          "src/components/reader.tsx"
+        ],
+        "route": "/series/los-gemelos-baek/capitulo/164"
+      },
+      "updatedAt": 1795798521394
+    },
     "inline:en-la-p-gina-de-serie-antiguos-primero-invierte-a8cbcca7": {
       "binding": {
         "kind": "allOf",
@@ -65,6 +124,95 @@
         "route": "/series/convirtiendome-en-el-perro-loco-del-clan-cheon-2/capitulo/1"
       },
       "updatedAt": 1795751226792
+    },
+    "inline:opening-a-chapter-on-the-development-server-show-8bf6a90b": {
+      "binding": {
+        "contains": "Cap. 1 · 11/41",
+        "kind": "text"
+      },
+      "declaredAt": 1795788745181,
+      "id": "inline:opening-a-chapter-on-the-development-server-show-8bf6a90b",
+      "provenBy": {
+        "at": 1795789371038,
+        "grade": "presence",
+        "runId": "drive-02f568426cd40b42",
+        "verdictId": "reticle_act_and_wait:1795789371038"
+      },
+      "state": "proved",
+      "statement": "Opening a Chapter on the development server shows its Pages in the vertical reader instead of failing to load.",
+      "status": "proved",
+      "subject": "series",
+      "surface": {
+        "files": [
+          "src/components/reader.tsx"
+        ],
+        "route": "/series/los-gemelos-baek/capitulo/162"
+      },
+      "updatedAt": 1795789371045
+    },
+    "inline:opening-a-chapter-shows-the-vertical-reader-with-231a0bf6": {
+      "binding": {
+        "kind": "allOf",
+        "predicates": [
+          {
+            "kind": "route",
+            "pathname": "/series/convirtiendome-en-el-perro-loco-del-clan-cheon-2/capitulo/1"
+          },
+          {
+            "kind": "element",
+            "query": {
+              "testid": "pagina-0"
+            }
+          },
+          {
+            "kind": "net",
+            "method": "GET",
+            "status": 200,
+            "urlContains": "/chapters/1/pages"
+          }
+        ]
+      },
+      "declaredAt": 1795779500416,
+      "id": "inline:opening-a-chapter-shows-the-vertical-reader-with-231a0bf6",
+      "state": "bound",
+      "statement": "Opening a Chapter shows the vertical reader with reserved space for every Page and only the near Pages loaded.",
+      "status": "proposed",
+      "subject": "series",
+      "updatedAt": 1795779500422
+    },
+    "inline:the-chapter-list-in-the-reader-lets-a-reader-jum-b5942459": {
+      "binding": {
+        "kind": "allOf",
+        "predicates": [
+          {
+            "kind": "route",
+            "pathname": "/series/convirtiendome-en-el-perro-loco-del-clan-cheon-2/capitulo/3"
+          },
+          {
+            "contains": "Capítulo 3 ·",
+            "kind": "text"
+          }
+        ]
+      },
+      "declaredAt": 1795798811961,
+      "id": "inline:the-chapter-list-in-the-reader-lets-a-reader-jum-b5942459",
+      "provenBy": {
+        "at": 1795798815170,
+        "grade": "presence",
+        "runId": "drive-1424b0e7f904b785",
+        "verdictId": "reticle_act_and_wait:1795798815170"
+      },
+      "state": "proved",
+      "statement": "The Chapter list in the reader lets a reader jump to another Chapter of the same Serie.",
+      "status": "proved",
+      "subject": "series",
+      "surface": {
+        "files": [
+          "src/components/reader.tsx"
+        ],
+        "route": "/series/convirtiendome-en-el-perro-loco-del-clan-cheon-2/capitulo/3"
+      },
+      "updatedAt": 1795798815181
     }
   },
   "subject": "series",

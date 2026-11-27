@@ -1,0 +1,68 @@
+{
+  "version": 2,
+  "name": "drive-opening-a-chapter-on-the-development-server-show",
+  "projectId": "manhwa-927de0d9",
+  "createdAt": 1795789287292,
+  "steps": [
+    {
+      "tool": "reticle_act",
+      "anchor": {
+        "kind": "testid",
+        "value": "pagina-0",
+        "source": {
+          "file": "src/components/reader.tsx",
+          "line": 262,
+          "column": 12
+        }
+      },
+      "args": {
+        "value": 1
+      },
+      "action": "scroll",
+      "timeoutMs": 30000,
+      "page": "/series/los-gemelos-baek/capitulo/162"
+    },
+    {
+      "tool": "reticle_act",
+      "anchor": {
+        "kind": "testid",
+        "value": "pagina-20",
+        "source": {
+          "file": "src/components/reader.tsx",
+          "line": 262,
+          "column": 12
+        }
+      },
+      "args": {},
+      "action": "scrollIntoView",
+      "expect": {
+        "kind": "text",
+        "contains": "Capítulo",
+        "satisfies": {
+          "property": "matchesPattern",
+          "pattern": "Capítulo \\d[\\d,.]* · \\d[\\d,.]*/\\d[\\d,.]*"
+        }
+      },
+      "timeoutMs": 30000,
+      "page": "/series/los-gemelos-baek/capitulo/162"
+    }
+  ],
+  "startPath": "/series/los-gemelos-baek/capitulo/162",
+  "intent": "Opening a Chapter on the development server shows its Pages in the vertical reader instead of failing to load.",
+  "requires": [
+    {
+      "kind": "route",
+      "pathname": "/series/los-gemelos-baek/capitulo/162"
+    }
+  ],
+  "ensures": [
+    {
+      "kind": "route",
+      "pathname": "/series/los-gemelos-baek/capitulo/162"
+    }
+  ],
+  "author": {
+    "agent": "claude-code"
+  },
+  "intentId": "flow:drive-opening-a-chapter-on-the-development-server-show"
+}

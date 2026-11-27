@@ -3,7 +3,7 @@ title: El lector responde 404 cuando la Fuente configurada no es la que tiene lo
 author: Richard
 date: 2026-11-27
 branch: design/theme-uber
-cost: { minutes: 288, tokens: 82977457 }
+cost: { minutes: 289, tokens: 82977457 }
 id: l-5fb9c914
 scope: repo
 status: active
@@ -28,6 +28,11 @@ La configuración de desarrollo se alinea con los datos que hay en la base: `.en
 El lector se queda en «Cargando Capítulo» al abrir la app desde el celular por la IP de la LAN, aunque la API responda 200 y en localhost todo funcione. La causa no está en el lector: Next bloquea el upgrade del WebSocket de HMR cuando el Origin no es localhost y responde algo que no es HTTP (medido: `Origin: http://<ip-LAN>:3001` → HTTP/0.9; `Origin: http://localhost:3001` → 101). El cliente de Turbopack espera ese canal y la ruta nunca hidrata: el HTML llega completo e idéntico en ambos orígenes, pero faltan los chunks que solo se piden tras conectar el canal.
 
 `allowedDevOrigins: ["*.*.*.*"]` cubre cualquier IPv4 que asigne el router. La IP es DHCP con lease de ~2 h, así que fijar la IP concreta obligaría a editar la config cada vez. El matcher de Next (`isCsrfOriginAllowed`) parte por puntos y compara segmento a segmento, así que el comodín de cuatro segmentos coincide con IPv4 y nada más.
+Un flujo guardado solo se commitea si cada paso afirma algo, porque un paso sin expect reproduce y devuelve verde sin haber comprobado nada: eso es peor que no tener flujo. De los nueve flujos nuevos del lector se commitearon dos por ese criterio: el que abre la lista de Capítulos desde la barra inferior, salta a un Capítulo y luego usa «Siguiente» (cada paso con expect), y el que desplaza el lector hasta una Página lejana afirmando el contador «Capítulo N · x/y».
+
+Un paso `reticle_act_sequence` no lleva `expect` en el nivel externo porque lo llevan sus pasos internos: inspeccionar solo el nivel externo hizo creer que el flujo de la lista no afirmaba nada, cuando sus 2 pasos internos sí llevan expect (elemento enlace al Capítulo siguiente, y allOf route+text).
+
+El intent viaja con el flujo porque vive en dos sitios: la entrada del índice general y su propio directorio por sujeto. Commitear el flujo sin su directorio deja el índice apuntando a un registro que no existe en el repo.
 
 ## Tried and ruled out
 - Tocar el endpoint o el lector para «arreglar» el 404: el contrato es correcto; devolver Páginas de una Fuente distinta a la activa rompería la identidad `(seriesId, sourceId, externalId)`.
@@ -35,6 +40,9 @@ El lector se queda en «Cargando Capítulo» al abrir la app desde el celular po
 - Fijar la IP LAN concreta en `allowedDevOrigins`: funciona, pero la IP caduca con el lease DHCP.
 - Buscar la causa en la CSP, en el adapter o en el manifiesto: descartado midiendo. Los headers y el HTML servidos son idénticos byte a byte entre localhost y la IP LAN; el endpoint devuelve 200 con sus Páginas en ambos.
 - Sospechar de chunks rotos o truncados: todos responden 200 con cuerpo; lo que falta en LAN son chunks que el navegador nunca llega a pedir.
+- Commitear los nueve flujos nuevos «por si acaso»: descartado porque siete son de sesiones anteriores o tienen pasos sin expect, así que no prueban nada al reproducirse.
+- Commitear el flujo cuyo único paso es un scrollIntoView sin expect: descartado porque no afirma ni ruta ni texto, solo mueve la página.
+- Juzgar el flujo de la lista por su paso externo sin expect: falló el criterio; los expects estaban dentro de la secuencia y hubo que leer `steps[0]["steps"]` para verlo.
 
 ## Watch out
 - Un 404 «Serie sin vínculo a la Fuente activa» señala desajuste entre `SOURCE_ADAPTER` y los vínculos de la base, no un fallo del adapter ni del anti-bot. Comprobar primero qué Fuente tienen los `series_sources` de esa Serie.
@@ -54,3 +62,11 @@ In the code:
 - `next.config.ts`: `allowedDevOrigins: ["*.*.*.*"]`.
 - Matcher: `node_modules/next/dist/server/app-render/csrf-protection.js` (`matchWildcardDomain`); bloqueo: `.../server/lib/router-utils/block-cross-site-dev.js`.
 - Bucle rojo/verde: Playwright headless contra `http://<IP-LAN>:3001/series/<slug>/capitulo/<id>`, afirmando que aparece `pagina-0`. Antes: spinner eterno, 0 imágenes. Después: 6 `<img>` con src, 0 errores de consola.
+- Los intents inline quedan `proved` con grado `presence` cuando no hay store registrado: eso prueba lo que el DOM muestra, no el estado interno de la app, porque ningún cambio de estado se observa.
+- `.reticle/.gitignore` ya excluye sessions/, runs/, visual/ y feedback/ porque son estado por máquina; lo que sí se commitea son flows/ e intent/.
+
+- `.reticle/flows/manhwa-927de0d9/drive-el-lector-ofrece-botones-fijos-de-cap-tulo-anter.json`: paso 0 = `reticle_act_sequence` con 2 pasos internos con expect; paso 1 = «Siguiente» con allOf route+text.
+- `.reticle/flows/manhwa-927de0d9/drive-opening-a-chapter-on-the-development-server-show.json`: paso 1 afirma el patrón del contador.
+- `.reticle/intent/index.json`, `.reticle/intent/series/intent.json`, `.reticle/intent/unsorted/intent.json`, `.reticle/intent/drive-el-lector-ofrece-botones-fijos-de/intent.json`, `.reticle/intent/drive-opening-a-chapter-on-the-developme/intent.json`.
+- Inspección de los expects internos: `python3 -I -c "import json; d=json.load(open(<flujo>)); print(d[\"steps\"][0].get(\"steps\"))"`.
+- Commit 3c3556e: 7 archivos, 477 inserciones (2 flujos + 5 registros de intent).

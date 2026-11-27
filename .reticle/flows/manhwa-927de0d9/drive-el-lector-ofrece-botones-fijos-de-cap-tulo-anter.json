@@ -1,0 +1,138 @@
+{
+  "version": 2,
+  "name": "drive-el-lector-ofrece-botones-fijos-de-cap-tulo-anter",
+  "projectId": "manhwa-927de0d9",
+  "createdAt": 1795798626519,
+  "steps": [
+    {
+      "tool": "reticle_act_sequence",
+      "anchor": {
+        "kind": "role",
+        "role": "button",
+        "name": "Capítulo 162: ver todos los Capítulos",
+        "within": [
+          "navigation"
+        ]
+      },
+      "steps": [
+        {
+          "tool": "reticle_act",
+          "anchor": {
+            "kind": "role",
+            "role": "button",
+            "name": "Capítulo 162: ver todos los Capítulos",
+            "within": [
+              "navigation"
+            ]
+          },
+          "args": {},
+          "action": "click",
+          "source": {
+            "file": "src/components/reader.tsx",
+            "line": 429
+          },
+          "expect": {
+            "kind": "element",
+            "query": {
+              "role": "link",
+              "name": "Capítulo 163"
+            }
+          }
+        },
+        {
+          "tool": "reticle_act",
+          "anchor": {
+            "kind": "role",
+            "role": "link",
+            "name": "Capítulo 163",
+            "within": [
+              "listitem",
+              "list"
+            ]
+          },
+          "args": {},
+          "action": "click",
+          "source": {
+            "file": "src/components/reader.tsx",
+            "line": 484
+          },
+          "expect": {
+            "kind": "allOf",
+            "predicates": [
+              {
+                "kind": "route",
+                "pathname": "/series/los-gemelos-baek/capitulo/163"
+              },
+              {
+                "kind": "text",
+                "contains": "Capítulo",
+                "satisfies": {
+                  "property": "matchesPattern",
+                  "pattern": "Capítulo \\d[\\d,.]* · \\d[\\d,.]*/"
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "timeoutMs": 20000,
+      "page": "/series/los-gemelos-baek/capitulo/162",
+      "endPage": "/series/los-gemelos-baek/capitulo/163"
+    },
+    {
+      "tool": "reticle_act",
+      "anchor": {
+        "kind": "role",
+        "role": "link",
+        "name": "Siguiente",
+        "within": [
+          "navigation"
+        ]
+      },
+      "args": {},
+      "action": "click",
+      "source": {
+        "file": "src/components/reader.tsx",
+        "line": 429
+      },
+      "expect": {
+        "kind": "allOf",
+        "predicates": [
+          {
+            "kind": "route",
+            "pathname": "/series/los-gemelos-baek/capitulo/164"
+          },
+          {
+            "kind": "text",
+            "contains": "Capítulo",
+            "satisfies": {
+              "property": "matchesPattern",
+              "pattern": "Capítulo \\d[\\d,.]* · \\d[\\d,.]*/"
+            }
+          }
+        ]
+      },
+      "timeoutMs": 20000,
+      "page": "/series/los-gemelos-baek/capitulo/163",
+      "endPage": "/series/los-gemelos-baek/capitulo/164"
+    }
+  ],
+  "startPath": "/series/los-gemelos-baek/capitulo/162",
+  "intent": "El lector ofrece botones fijos de Capítulo anterior y siguiente y una lista de todos los Capítulos, sin tener que llegar al final.",
+  "requires": [
+    {
+      "kind": "route",
+      "pathname": "/series/los-gemelos-baek/capitulo/162"
+    }
+  ],
+  "ensures": [
+    {
+      "kind": "route",
+      "pathname": "/series/los-gemelos-baek/capitulo/164"
+    }
+  ],
+  "author": {
+    "agent": "claude-code"
+  },
+  "intentId": "flow:drive-el-lector-ofrece-botones-fijos-de-cap-tulo-anter"
+}

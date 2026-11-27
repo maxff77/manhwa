@@ -88,6 +88,21 @@
       "status": "proved",
       "subject": "unsorted",
       "updatedAt": 1794851090594
+    },
+    "inline:the-reader-offers-a-chapter-list-opening-it-show-af677c24": {
+      "binding": {
+        "kind": "element",
+        "query": {
+          "role": "dialog"
+        }
+      },
+      "declaredAt": 1795798750259,
+      "id": "inline:the-reader-offers-a-chapter-list-opening-it-show-af677c24",
+      "state": "bound",
+      "statement": "The reader offers a Chapter list. Opening it shows every Chapter of the Serie with the current one marked.",
+      "status": "proposed",
+      "subject": "unsorted",
+      "updatedAt": 1795798750267
     }
   },
   "subject": "unsorted",

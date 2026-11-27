@@ -1,16 +1,40 @@
 {
   "entries": [
     {
+      "id": "flow:drive-a-visitor-opens-a-serie-from-the-home-the-serie",
+      "statement": "A visitor opens a Serie from the home. The Serie page shows its Chapter…",
+      "status": "proposed",
+      "subject": "drive-a-visitor-opens-a-serie-from-the-h"
+    },
+    {
       "id": "flow:drive-el-bot-n-de-tema-cambia-la-app-al-modo-oscuro-de",
       "statement": "El botón de tema cambia la app al modo oscuro del theme monocromo.",
       "status": "proposed",
       "subject": "drive-el-bot-n-de-tema-cambia-la-app-al"
     },
     {
+      "id": "flow:drive-el-lector-ofrece-botones-fijos-de-cap-tulo-anter",
+      "statement": "El lector ofrece botones fijos de Capítulo anterior y siguiente y una l…",
+      "status": "proposed",
+      "subject": "drive-el-lector-ofrece-botones-fijos-de"
+    },
+    {
       "id": "flow:drive-en-la-p-gina-de-serie-antiguos-primero-invierte",
       "statement": "En la página de Serie, «Antiguos primero» invierte el calendario de Cap…",
       "status": "proposed",
       "subject": "drive-en-la-p-gina-de-serie-antiguos-pri"
+    },
+    {
+      "id": "flow:drive-opening-a-chapter-on-the-development-server-show",
+      "statement": "Opening a Chapter on the development server shows its Pages in the vert…",
+      "status": "proposed",
+      "subject": "drive-opening-a-chapter-on-the-developme"
+    },
+    {
+      "id": "flow:drive-opening-a-chapter-on-the-development-server-show-b68633",
+      "statement": "Opening a Chapter on the development server shows its Pages in the vert…",
+      "status": "proposed",
+      "subject": "drive-opening-a-chapter-on-the-developme"
     },
     {
       "id": "flow:home-filtro-generos",
@@ -31,6 +55,18 @@
       "subject": "serie-sync-y-enlace-al-lector"
     },
     {
+      "id": "inline:a-visitor-opens-a-serie-from-the-home-the-serie-ddf5eda9",
+      "statement": "A visitor opens a Serie from the home. The Serie page shows its Chapter…",
+      "status": "proved",
+      "subject": "series"
+    },
+    {
+      "id": "inline:el-lector-ofrece-botones-fijos-de-cap-tulo-anter-eb6b4829",
+      "statement": "El lector ofrece botones fijos de Capítulo anterior y siguiente y una l…",
+      "status": "proved",
+      "subject": "series"
+    },
+    {
       "id": "inline:en-la-p-gina-de-serie-antiguos-primero-invierte-a8cbcca7",
       "statement": "En la página de Serie, «Antiguos primero» invierte el calendario de Cap…",
       "status": "proved",
@@ -39,6 +75,24 @@
     {
       "id": "inline:en-la-p-gina-de-serie-empezar-a-leer-lleva-al-ca-635c9a69",
       "statement": "En la página de Serie, «Empezar a leer» lleva al Capítulo 1 de la Serie.",
+      "status": "proved",
+      "subject": "series"
+    },
+    {
+      "id": "inline:opening-a-chapter-on-the-development-server-show-8bf6a90b",
+      "statement": "Opening a Chapter on the development server shows its Pages in the vert…",
+      "status": "proved",
+      "subject": "series"
+    },
+    {
+      "id": "inline:opening-a-chapter-shows-the-vertical-reader-with-231a0bf6",
+      "statement": "Opening a Chapter shows the vertical reader with reserved space for eve…",
+      "status": "proposed",
+      "subject": "series"
+    },
+    {
+      "id": "inline:the-chapter-list-in-the-reader-lets-a-reader-jum-b5942459",
+      "statement": "The Chapter list in the reader lets a reader jump to another Chapter of…",
       "status": "proved",
       "subject": "series"
     },
@@ -58,6 +112,12 @@
       "id": "inline:la-home-carga-sin-errores-y-muestra-el-cat-logo-0be5ce5f",
       "statement": "la home carga sin errores y muestra el Catálogo vacío",
       "status": "proved",
+      "subject": "unsorted"
+    },
+    {
+      "id": "inline:the-reader-offers-a-chapter-list-opening-it-show-af677c24",
+      "statement": "The reader offers a Chapter list. Opening it shows every Chapter of the…",
+      "status": "proposed",
       "subject": "unsorted"
     }
   ],

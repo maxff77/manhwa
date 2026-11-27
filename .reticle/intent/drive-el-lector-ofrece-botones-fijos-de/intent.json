@@ -1,0 +1,18 @@
+{
+  "intents": {
+    "flow:drive-el-lector-ofrece-botones-fijos-de-cap-tulo-anter": {
+      "declaredAt": 1795798626718,
+      "id": "flow:drive-el-lector-ofrece-botones-fijos-de-cap-tulo-anter",
+      "state": "declared",
+      "statement": "El lector ofrece botones fijos de Capítulo anterior y siguiente y una lista de todos los Capítulos, sin tener que llegar al final.",
+      "status": "proposed",
+      "subject": "drive-el-lector-ofrece-botones-fijos-de",
+      "surface": {
+        "flow": "drive-el-lector-ofrece-botones-fijos-de-cap-tulo-anter"
+      },
+      "updatedAt": 1795798626720
+    }
+  },
+  "subject": "drive-el-lector-ofrece-botones-fijos-de",
+  "version": 1
+}
